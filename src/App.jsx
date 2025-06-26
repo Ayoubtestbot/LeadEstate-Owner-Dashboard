@@ -27,6 +27,10 @@ import Settings from './pages/Settings'
 // Import components
 import Layout from './components/Layout'
 
+// Import contexts
+import { LanguageProvider } from './contexts/LanguageContext'
+import { PermissionsProvider } from './contexts/PermissionsContext'
+
 // API Configuration
 const API_URL = import.meta.env.VITE_API_URL || 'https://leadestate-backend.onrender.com/api'
 
@@ -294,8 +298,10 @@ const ProtectedRoute = ({ children }) => {
 function App() {
   return (
     <AuthProvider>
-      <DataProvider>
-        <Router>
+      <LanguageProvider>
+        <PermissionsProvider>
+          <DataProvider>
+            <Router>
           <div className="App">
             <Routes>
               <Route path="/login" element={<Login />} />
@@ -347,7 +353,9 @@ function App() {
           </div>
         </Router>
       </DataProvider>
-    </AuthProvider>
+    </PermissionsProvider>
+  </LanguageProvider>
+</AuthProvider>
   )
 }
 
