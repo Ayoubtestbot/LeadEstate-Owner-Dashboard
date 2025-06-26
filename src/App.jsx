@@ -282,7 +282,7 @@ const Leads = createSimplePage('Leads', 'Manage your real estate leads')
 const Properties = createSimplePage('Properties', 'Manage your property listings')
 const Team = createSimplePage('Team', 'Manage your team members')
 const Analytics = createSimplePage('Analytics', 'View analytics and reports')
-const Settings = createSimplePage('Settings', 'Configure your CRM settings')
+const SettingsPage = createSimplePage('Settings', 'Configure your CRM settings')
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -363,7 +363,7 @@ function App() {
             <Route path="/settings" element={
               <ProtectedRoute>
                 <Layout>
-                  <Settings />
+                  <SettingsPage />
                 </Layout>
               </ProtectedRoute>
             } />
