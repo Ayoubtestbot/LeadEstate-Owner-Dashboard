@@ -24,6 +24,9 @@ import Team from './pages/Team'
 import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
 
+// Import components
+import Layout from './components/Layout'
+
 // API Configuration
 const API_URL = import.meta.env.VITE_API_URL || 'https://leadestate-backend.onrender.com/api'
 
@@ -285,22 +288,7 @@ const ProtectedRoute = ({ children }) => {
   return user ? children : <Navigate to="/login" />
 }
 
-// Main Layout Component
-const Layout = ({ children }) => {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header setSidebarOpen={setSidebarOpen} />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
-          {children}
-        </main>
-      </div>
-    </div>
-  )
-}
 
 // Main App Component
 function App() {
