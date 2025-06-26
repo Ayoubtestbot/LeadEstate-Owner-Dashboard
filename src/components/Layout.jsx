@@ -88,8 +88,13 @@ const Layout = ({ children }) => {
 
   return (
     <div className="flex h-screen bg-gray-50">
+      {/* DEBUG: Layout is rendering */}
+      <div className="fixed top-0 right-0 z-50 bg-red-500 text-white p-2 text-xs">
+        LAYOUT ACTIVE - SIDEBAR SHOULD BE HERE
+      </div>
+
       {/* Sidebar */}
-      <div className="hidden lg:flex lg:flex-shrink-0">
+      <div className="flex lg:flex-shrink-0 w-64 bg-white shadow-lg">
         <div className="flex flex-col w-64 bg-white shadow-lg">
         <div className="flex flex-col h-full">
           {/* Logo */}
