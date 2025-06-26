@@ -18,6 +18,11 @@ import {
 
 // Import pages
 import Dashboard from './pages/Dashboard'
+import Leads from './pages/Leads'
+import Properties from './pages/Properties'
+import Team from './pages/Team'
+import Analytics from './pages/Analytics'
+import Settings from './pages/Settings'
 
 // API Configuration
 const API_URL = import.meta.env.VITE_API_URL || 'https://leadestate-backend.onrender.com/api'
@@ -208,32 +213,8 @@ const Header = ({ setSidebarOpen }) => {
 
 
 
-// Simple page components
-const createSimplePage = (title, description) => {
-  return () => (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-        <p className="text-gray-600">{description}</p>
-      </div>
-      
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">{title} Management</h3>
-        </div>
-        <div className="p-6">
-          <p className="text-gray-500">{title} functionality will be implemented here.</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-const Leads = createSimplePage('Leads', 'Manage your real estate leads')
-const Properties = createSimplePage('Properties', 'Manage your property listings')
-const Team = createSimplePage('Team', 'Manage your team members')
-const Analytics = createSimplePage('Analytics', 'View analytics and reports')
-const SettingsPage = createSimplePage('Settings', 'Configure your CRM settings')
+// Rename Settings to avoid conflict with SettingsIcon
+const SettingsPage = Settings
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
