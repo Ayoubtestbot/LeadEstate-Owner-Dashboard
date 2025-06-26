@@ -38,6 +38,60 @@ export const useAuth = () => {
   return context
 }
 
+// Data Context for leads and properties
+const DataContext = createContext()
+
+export const useData = () => {
+  const context = useContext(DataContext)
+  if (!context) {
+    throw new Error('useData must be used within a DataProvider')
+  }
+  return context
+}
+
+// Data Provider Component
+const DataProvider = ({ children }) => {
+  const [leads, setLeads] = useState([])
+  const [properties, setProperties] = useState([])
+  const [loading, setLoading] = useState(false)
+
+  const addLead = (leadData) => {
+    const newLead = {
+      id: Date.now().toString(),
+      ...leadData,
+      createdAt: new Date().toISOString()
+    }
+    setLeads(prev => [...prev, newLead])
+    return newLead
+  }
+
+  const addProperty = (propertyData) => {
+    const newProperty = {
+      id: Date.now().toString(),
+      ...propertyData,
+      createdAt: new Date().toISOString()
+    }
+    setProperties(prev => [...prev, newProperty])
+    return newProperty
+  }
+
+  const value = {
+    leads,
+    properties,
+    loading,
+    setLeads,
+    setProperties,
+    addLead,
+    addProperty
+  }
+
+  return (
+    <DataContext.Provider value={value}>
+      {children}
+    </DataContext.Provider>
+  )
+}
+
 // Auth Provider
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
@@ -252,57 +306,59 @@ const Layout = ({ children }) => {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <div className="App">
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <Layout>
-                  <Dashboard />
-                </Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/leads" element={
-              <ProtectedRoute>
-                <Layout>
-                  <Leads />
-                </Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/properties" element={
-              <ProtectedRoute>
-                <Layout>
-                  <Properties />
-                </Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/team" element={
-              <ProtectedRoute>
-                <Layout>
-                  <Team />
-                </Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/analytics" element={
-              <ProtectedRoute>
-                <Layout>
-                  <Analytics />
-                </Layout>
-              </ProtectedRoute>
-            } />
-            <Route path="/settings" element={
-              <ProtectedRoute>
-                <Layout>
-                  <SettingsPage />
-                </Layout>
-              </ProtectedRoute>
-            } />
-          </Routes>
-          <Toaster position="top-right" />
-        </div>
-      </Router>
+      <DataProvider>
+        <Router>
+          <div className="App">
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Dashboard />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/leads" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Leads />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/properties" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Properties />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/team" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Team />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/analytics" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Analytics />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/settings" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <SettingsPage />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+            </Routes>
+            <Toaster position="top-right" />
+          </div>
+        </Router>
+      </DataProvider>
     </AuthProvider>
   )
 }
