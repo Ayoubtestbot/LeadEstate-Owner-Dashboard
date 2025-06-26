@@ -94,8 +94,7 @@ const Layout = ({ children }) => {
       </div>
 
       {/* Sidebar */}
-      <div className="flex lg:flex-shrink-0 w-64 bg-white shadow-lg">
-        <div className="flex flex-col w-64 bg-white shadow-lg">
+      <div className="w-64 bg-blue-100 shadow-lg border-r border-gray-200">
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
@@ -156,7 +155,6 @@ const Layout = ({ children }) => {
               <span className="font-medium">{t('common.logout')}</span>
             </button>
           </div>
-        </div>
         </div>
       </div>
 
