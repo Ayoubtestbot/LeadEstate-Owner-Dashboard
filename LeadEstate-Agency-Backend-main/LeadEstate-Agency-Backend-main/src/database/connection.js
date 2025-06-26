@@ -7,8 +7,8 @@ const connectDatabase = async () => {
   try {
     // Database configuration
     const config = {
-      dialect: 'postgres',
-      logging: process.env.NODE_ENV === 'development' ? 
+      dialect: process.env.DATABASE_URL?.startsWith('sqlite:') ? 'sqlite' : 'postgres',
+      logging: process.env.NODE_ENV === 'development' ?
         (msg) => logger.debug(msg) : false,
       pool: {
         max: 10,
@@ -36,8 +36,10 @@ const connectDatabase = async () => {
       console.log('URL format:', process.env.DATABASE_URL.substring(0, 30) + '...');
 
       // Validate URL format
-      if (!process.env.DATABASE_URL.startsWith('postgresql://') && !process.env.DATABASE_URL.startsWith('postgres://')) {
-        throw new Error('Invalid DATABASE_URL format. Must start with postgresql:// or postgres://');
+      if (!process.env.DATABASE_URL.startsWith('postgresql://') &&
+          !process.env.DATABASE_URL.startsWith('postgres://') &&
+          !process.env.DATABASE_URL.startsWith('sqlite:')) {
+        throw new Error('Invalid DATABASE_URL format. Must start with postgresql://, postgres://, or sqlite:');
       }
 
       sequelize = new Sequelize(process.env.DATABASE_URL, config);
