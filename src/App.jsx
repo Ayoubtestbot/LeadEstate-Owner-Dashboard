@@ -217,6 +217,7 @@ const Dashboard = () => {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-gray-600">Welcome to your complete real estate CRM</p>
+        <p className="text-xs text-gray-400">Version: Complete CRM v2.0 - {new Date().toISOString()}</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
