@@ -9,7 +9,7 @@ import {
   Trash2,
   UserCheck,
   Home,
-  Grid3X3,
+  Grid,
   List,
   Users,
   Upload,
@@ -228,7 +228,7 @@ const Leads = () => {
                   : 'text-gray-700 hover:bg-gray-50'
               }`}
             >
-              <Grid3X3 className="h-4 w-4 mr-1 inline" />
+              <Grid className="h-4 w-4 mr-1 inline" />
               Kanban
             </button>
           </div>
@@ -507,7 +507,7 @@ const Leads = () => {
           {filteredLeads.length === 0 && (
             <div className="text-center py-12">
               <div className="mx-auto h-24 w-24 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                <Grid3X3 className="h-12 w-12 text-gray-400" />
+                <Grid className="h-12 w-12 text-gray-400" />
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">No leads to display</h3>
               <p className="text-gray-500 mb-6">
