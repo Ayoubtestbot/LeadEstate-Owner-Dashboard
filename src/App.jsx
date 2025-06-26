@@ -30,6 +30,7 @@ import Layout from './components/Layout'
 // Import contexts
 import { LanguageProvider } from './contexts/LanguageContext'
 import { PermissionsProvider } from './contexts/PermissionsContext'
+import { ToastProvider } from './components/Toast'
 
 // API Configuration
 const API_URL = import.meta.env.VITE_API_URL || 'https://leadestate-backend.onrender.com/api'
@@ -300,8 +301,9 @@ function App() {
     <AuthProvider>
       <LanguageProvider>
         <PermissionsProvider>
-          <DataProvider>
-            <Router>
+          <ToastProvider>
+            <DataProvider>
+              <Router>
           <div className="App">
             <Routes>
               <Route path="/login" element={<Login />} />
@@ -353,6 +355,7 @@ function App() {
           </div>
         </Router>
       </DataProvider>
+    </ToastProvider>
     </PermissionsProvider>
   </LanguageProvider>
 </AuthProvider>
