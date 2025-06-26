@@ -152,6 +152,7 @@ const Layout = ({ children }) => {
             </button>
           </div>
         </div>
+        </div>
       </div>
 
       {/* Mobile sidebar */}
