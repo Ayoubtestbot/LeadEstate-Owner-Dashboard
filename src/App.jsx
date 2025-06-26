@@ -2,14 +2,14 @@ import React, { useState, useEffect, createContext, useContext } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate, Link, useNavigate } from 'react-router-dom'
 import toast, { Toaster } from 'react-hot-toast'
 import axios from 'axios'
-import { 
-  Home, 
-  Users, 
-  Building, 
-  BarChart3, 
-  Settings, 
-  UserCheck, 
-  Menu, 
+import {
+  Home,
+  Users,
+  Building,
+  BarChart3,
+  Settings as SettingsIcon,
+  UserCheck,
+  Menu,
   LogOut,
   Plus,
   Search,
@@ -145,7 +145,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
     { name: 'Properties', href: '/properties', icon: Building },
     { name: 'Team', href: '/team', icon: UserCheck },
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-    { name: 'Settings', href: '/settings', icon: Settings },
+    { name: 'Settings', href: '/settings', icon: SettingsIcon },
   ]
 
   return (
