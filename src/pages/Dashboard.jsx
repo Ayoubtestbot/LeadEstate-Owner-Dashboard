@@ -87,13 +87,10 @@ const Dashboard = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex-1 min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
-            🎉 COMPLETE CRM DEPLOYED! Welcome back, {user?.name}!
+            Welcome back, {user?.name}!
           </h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">
-            ✅ This is the FULL CRM with sidebar navigation - Here's what's happening with your real estate business today.
-          </p>
-          <p className="text-xs text-green-600 font-bold mt-1">
-            🚀 Version: Complete CRM v3.0 - {new Date().toLocaleString()} - ALL FEATURES ACTIVE
+            Here's what's happening with your real estate business today.
           </p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
