@@ -23,6 +23,12 @@ import Properties from './pages/Properties'
 import Team from './pages/Team'
 import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
+import Automation from './pages/Automation'
+import FollowUp from './pages/FollowUp'
+import Clients from './pages/Clients'
+import Tasks from './pages/Tasks'
+import Reports from './pages/Reports'
+import Profile from './pages/Profile'
 
 // Import components
 import Layout from './components/Layout'
@@ -32,8 +38,12 @@ import { LanguageProvider } from './contexts/LanguageContext'
 import { PermissionsProvider } from './contexts/PermissionsContext'
 import { ToastProvider } from './components/Toast'
 
-// API Configuration
-const API_URL = import.meta.env.VITE_API_URL || 'https://leadestate-backend.onrender.com/api'
+// API Configuration - Force correct backend URL
+const API_URL = 'https://leadestate-backend-9fih.onrender.com/api'
+
+// Debug API URL
+console.log('🔧 Environment VITE_API_URL:', import.meta.env.VITE_API_URL)
+console.log('🔧 Final API_URL:', API_URL)
 
 // Auth Context
 const AuthContext = createContext()
@@ -61,36 +71,370 @@ export const useData = () => {
 const DataProvider = ({ children }) => {
   const [leads, setLeads] = useState([])
   const [properties, setProperties] = useState([])
+  const [teamMembers, setTeamMembers] = useState([])
   const [loading, setLoading] = useState(false)
 
-  const addLead = (leadData) => {
-    const newLead = {
-      id: Date.now().toString(),
-      ...leadData,
-      createdAt: new Date().toISOString()
+  // Fetch data from API on component mount
+  useEffect(() => {
+    fetchAllData()
+  }, [])
+
+  const fetchAllData = async () => {
+    console.log('🔄 Fetching all data from API...')
+    console.log('🌐 API_URL:', API_URL)
+    setLoading(true)
+    try {
+      const [leadsRes, propertiesRes, teamRes] = await Promise.all([
+        fetch(`${API_URL}/leads`).catch((err) => {
+          console.error('❌ Error fetching leads:', err)
+          return { ok: false }
+        }),
+        fetch(`${API_URL}/properties`).catch((err) => {
+          console.error('❌ Error fetching properties:', err)
+          return { ok: false }
+        }),
+        fetch(`${API_URL}/team`).catch((err) => {
+          console.error('❌ Error fetching team:', err)
+          return { ok: false }
+        })
+      ])
+
+      console.log('📊 Leads response status:', leadsRes.status, leadsRes.ok)
+      if (leadsRes.ok) {
+        const leadsData = await leadsRes.json()
+        console.log('✅ Leads data received:', leadsData)
+        setLeads(leadsData.data || [])
+      } else {
+        console.warn('❌ Failed to fetch leads from API, status:', leadsRes.status)
+        setLeads([])
+      }
+
+      console.log('🏠 Properties response status:', propertiesRes.status, propertiesRes.ok)
+      if (propertiesRes.ok) {
+        const propertiesData = await propertiesRes.json()
+        console.log('✅ Properties data received:', propertiesData)
+        setProperties(propertiesData.data || [])
+      } else {
+        console.warn('❌ Failed to fetch properties from API, status:', propertiesRes.status)
+        setProperties([])
+      }
+
+      console.log('👥 Team response status:', teamRes.status, teamRes.ok)
+      if (teamRes.ok) {
+        const teamData = await teamRes.json()
+        console.log('✅ Team data received:', teamData)
+        setTeamMembers(teamData.data || [])
+      } else {
+        console.warn('❌ Failed to fetch team members from API, status:', teamRes.status)
+        setTeamMembers([])
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error)
+      // Set empty arrays as fallback
+      setLeads([])
+      setProperties([])
+      setTeamMembers([])
+    } finally {
+      setLoading(false)
     }
-    setLeads(prev => [...prev, newLead])
-    return newLead
   }
 
-  const addProperty = (propertyData) => {
-    const newProperty = {
-      id: Date.now().toString(),
-      ...propertyData,
-      createdAt: new Date().toISOString()
+  // Refresh data function for real-time updates
+  const refreshData = async (skipLoading = true) => {
+    console.log('🔄 Refreshing all data...')
+
+    if (!skipLoading) setLoading(true)
+
+    try {
+      const [leadsRes, propertiesRes, teamRes] = await Promise.all([
+        fetch(`${API_URL}/leads`).catch(() => ({ ok: false })),
+        fetch(`${API_URL}/properties`).catch(() => ({ ok: false })),
+        fetch(`${API_URL}/team`).catch(() => ({ ok: false }))
+      ])
+
+      if (leadsRes.ok) {
+        const leadsData = await leadsRes.json()
+        setLeads(leadsData.data || [])
+      }
+
+      if (propertiesRes.ok) {
+        const propertiesData = await propertiesRes.json()
+        setProperties(propertiesData.data || [])
+      }
+
+      if (teamRes.ok) {
+        const teamData = await teamRes.json()
+        setTeamMembers(teamData.data || [])
+      }
+
+      console.log('✅ Data refreshed successfully')
+    } catch (error) {
+      console.error('Error refreshing data:', error)
+    } finally {
+      if (!skipLoading) setLoading(false)
     }
-    setProperties(prev => [...prev, newProperty])
-    return newProperty
+  }
+
+  const addLead = async (leadData) => {
+    try {
+      const response = await fetch(`${API_URL}/leads`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...leadData,
+          assignedTo: leadData.assignedTo || null,
+          status: leadData.status || 'new'
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+
+        // Optimistic update: Update UI immediately and keep it
+        setLeads(prev => [...prev, result.data])
+
+        // No background refresh needed - the optimistic update is reliable
+        console.log('✅ Lead added and UI updated immediately')
+
+        return result.data
+      } else {
+        throw new Error('Failed to add lead')
+      }
+    } catch (error) {
+      console.error('Error adding lead:', error)
+      throw error
+    }
+  }
+
+  const addProperty = async (propertyData) => {
+    try {
+      const response = await fetch(`${API_URL}/properties`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(propertyData)
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+
+        // Optimistic update: Update UI immediately and keep it
+        setProperties(prev => [...prev, result.data])
+
+        console.log('✅ Property added and UI updated immediately')
+
+        return result.data
+      } else {
+        throw new Error('Failed to add property')
+      }
+    } catch (error) {
+      console.error('Error adding property:', error)
+      throw error
+    }
+  }
+
+  const addTeamMember = async (memberData) => {
+    try {
+      console.log('🔄 Adding team member:', memberData)
+      console.log('🌐 API URL:', `${API_URL}/team`)
+
+      const response = await fetch(`${API_URL}/team`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(memberData)
+      })
+
+      console.log('📡 Response status:', response.status)
+      console.log('📡 Response ok:', response.ok)
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log('✅ Team member added successfully:', result)
+
+        // Optimistic update: Update UI immediately and keep it
+        setTeamMembers(prev => [...prev, result.data])
+
+        return result.data
+      } else {
+        const errorText = await response.text()
+        console.error('❌ API Error:', response.status, errorText)
+        throw new Error(`Failed to add team member: ${response.status}`)
+      }
+    } catch (error) {
+      console.error('❌ Error adding team member:', error)
+      throw error
+    }
+  }
+
+  const updateTeamMember = async (id, memberData) => {
+    try {
+      const response = await fetch(`${API_URL}/team/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(memberData)
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+
+        // Update UI immediately with server response
+        setTeamMembers(prev => prev.map(member =>
+          member.id === id ? result.data : member
+        ))
+
+        console.log('✅ Team member updated successfully:', result.data)
+        return result.data
+      } else {
+        throw new Error('Failed to update team member')
+      }
+    } catch (error) {
+      console.error('Error updating team member:', error)
+      // Fallback to local update if API fails
+      setTeamMembers(prev => prev.map(member =>
+        member.id === id ? { ...member, ...memberData } : member
+      ))
+      throw error
+    }
+  }
+
+  const deleteTeamMember = (id) => {
+    setTeamMembers(prev => prev.filter(member => member.id !== id))
+  }
+
+  const updateLead = async (id, leadData) => {
+    try {
+      const response = await fetch(`${API_URL}/leads/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(leadData)
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+
+        // Optimistic update: Update UI immediately and keep it
+        setLeads(prev => prev.map(lead =>
+          lead.id === id ? result.data : lead
+        ))
+
+        return result.data
+      } else {
+        throw new Error('Failed to update lead')
+      }
+    } catch (error) {
+      console.error('Error updating lead:', error)
+      // Fallback to local update if API fails
+      setLeads(prev => prev.map(lead =>
+        lead.id === id ? { ...lead, ...leadData } : lead
+      ))
+    }
+  }
+
+  const deleteLead = (id) => {
+    setLeads(prev => prev.filter(lead => lead.id !== id))
+  }
+
+  const updateProperty = async (id, propertyData) => {
+    try {
+      const response = await fetch(`${API_URL}/properties/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(propertyData)
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+
+        // Update UI immediately with server response
+        setProperties(prev => prev.map(property =>
+          property.id === id ? result.data : property
+        ))
+
+        console.log('✅ Property updated successfully:', result.data)
+        return result.data
+      } else {
+        throw new Error('Failed to update property')
+      }
+    } catch (error) {
+      console.error('Error updating property:', error)
+      // Fallback to local update if API fails
+      setProperties(prev => prev.map(property =>
+        property.id === id ? { ...property, ...propertyData } : property
+      ))
+      throw error
+    }
+  }
+
+  const deleteProperty = (id) => {
+    setProperties(prev => prev.filter(property => property.id !== id))
+  }
+
+  const linkPropertyToLead = async (leadId, propertyId) => {
+    try {
+      await updateLead(leadId, { linkedPropertyId: propertyId })
+      console.log('✅ Property linked to lead successfully')
+    } catch (error) {
+      console.error('Error linking property to lead:', error)
+      // Fallback to local update if API fails
+      setLeads(prev => prev.map(lead =>
+        lead.id === leadId ? { ...lead, linkedPropertyId: propertyId } : lead
+      ))
+    }
+  }
+
+  const unlinkPropertyFromLead = async (leadId) => {
+    try {
+      await updateLead(leadId, { linkedPropertyId: null })
+      console.log('✅ Property unlinked from lead successfully')
+    } catch (error) {
+      console.error('Error unlinking property from lead:', error)
+      // Fallback to local update if API fails
+      setLeads(prev => prev.map(lead =>
+        lead.id === leadId ? { ...lead, linkedPropertyId: null } : lead
+      ))
+    }
+  }
+
+  const clearAllData = () => {
+    setLeads([])
+    setProperties([])
+    setTeamMembers([])
+    localStorage.removeItem('leadestate_leads')
+    localStorage.removeItem('leadestate_properties')
+    localStorage.removeItem('leadestate_team_members')
   }
 
   const value = {
     leads,
     properties,
+    teamMembers,
     loading,
     setLeads,
     setProperties,
+    setTeamMembers,
     addLead,
-    addProperty
+    addProperty,
+    addTeamMember,
+    updateTeamMember,
+    deleteTeamMember,
+    updateLead,
+    deleteLead,
+    updateProperty,
+    deleteProperty,
+    linkPropertyToLead,
+    unlinkPropertyFromLead,
+    refreshData
   }
 
   return (
@@ -106,26 +450,46 @@ const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      setUser({ firstName: 'Demo User', role: 'manager' })
+    let token = localStorage.getItem('token')
+
+    // If no token exists, create a demo token for development
+    if (!token) {
+      token = 'demo-token-' + Date.now()
+      localStorage.setItem('token', token)
     }
+
+    // Create a demo user
+    setUser({
+      firstName: 'Demo User',
+      name: 'Demo User',
+      role: 'manager',
+      email: 'demo@agency.com'
+    })
+
     setLoading(false)
   }, [])
 
   const login = async (credentials) => {
     try {
       setLoading(true)
-      // Simulate login for demo
-      if (credentials.email === 'admin@demo.com' && credentials.password === 'password') {
-        const userData = { firstName: 'Demo User', role: 'manager' }
-        localStorage.setItem('token', 'demo-token')
-        setUser(userData)
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        localStorage.setItem('token', data.token)
+        setUser(data.user)
         toast.success('Login successful!')
         return { success: true }
       } else {
-        toast.error('Invalid credentials')
-        return { success: false, message: 'Invalid credentials' }
+        toast.error(data.message || 'Invalid credentials')
+        return { success: false, message: data.message }
       }
     } catch (error) {
       toast.error('Login failed')
@@ -290,7 +654,7 @@ const ProtectedRoute = ({ children }) => {
     )
   }
 
-  return user ? children : <Navigate to="/login" />
+  return user ? children : <Navigate to="/login" replace />
 }
 
 
@@ -361,6 +725,48 @@ function AppWithAuth() {
                 <ProtectedRoute>
                   <Layout>
                     <SettingsPage />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/automation" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Automation />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/follow-up" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <FollowUp />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/clients" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Clients />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/tasks" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Tasks />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/reports" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Reports />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Profile />
                   </Layout>
                 </ProtectedRoute>
               } />

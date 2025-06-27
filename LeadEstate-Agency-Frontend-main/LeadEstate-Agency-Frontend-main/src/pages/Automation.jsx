@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { usePermissions, PERMISSIONS } from '../contexts/PermissionsContext'
+import { useLanguage } from '../contexts/LanguageContext'
 import ProtectedComponent from '../components/ProtectedComponent'
 import AddWorkflowModal from '../components/AddWorkflowModal'
 import { useToast } from '../components/Toast'
@@ -25,43 +26,10 @@ import {
 const Automation = () => {
   const { hasPermission } = usePermissions()
   const { showToast } = useToast()
+  const { t } = useLanguage()
   const [activeTab, setActiveTab] = useState('workflows')
   const [showAddWorkflow, setShowAddWorkflow] = useState(false)
-  const [workflows, setWorkflows] = useState([
-    {
-      id: 1,
-      name: 'New Lead Welcome Sequence',
-      description: 'Automatically send welcome emails to new leads',
-      status: 'active',
-      trigger: 'New lead created',
-      actions: ['Send welcome email', 'Add to CRM', 'Assign to agent'],
-      leads: 45,
-      conversionRate: '12%',
-      lastRun: '2 hours ago'
-    },
-    {
-      id: 2,
-      name: 'Follow-up Reminder',
-      description: 'Remind agents to follow up with qualified leads',
-      status: 'active',
-      trigger: 'Lead status = qualified',
-      actions: ['Wait 1 day', 'Send reminder to agent', 'Create task'],
-      leads: 23,
-      conversionRate: '28%',
-      lastRun: '1 hour ago'
-    },
-    {
-      id: 3,
-      name: 'Property Match Notification',
-      description: 'Notify leads when matching properties are added',
-      status: 'paused',
-      trigger: 'New property matches lead criteria',
-      actions: ['Send property alert', 'Schedule viewing'],
-      leads: 12,
-      conversionRate: '35%',
-      lastRun: '1 day ago'
-    }
-  ])
+  const [workflows, setWorkflows] = useState([])
 
   // Handler functions
   const handleAddWorkflow = (workflowData) => {
@@ -115,40 +83,7 @@ const Automation = () => {
     }
   }
 
-  const templates = [
-    {
-      id: 1,
-      name: 'Lead Nurturing Campaign',
-      description: 'Multi-step email sequence for lead nurturing',
-      category: 'Email Marketing',
-      icon: Mail,
-      color: 'bg-blue-500'
-    },
-    {
-      id: 2,
-      name: 'SMS Follow-up',
-      description: 'Automated SMS reminders and updates',
-      category: 'SMS Marketing',
-      icon: MessageSquare,
-      color: 'bg-green-500'
-    },
-    {
-      id: 3,
-      name: 'Appointment Booking',
-      description: 'Automated appointment scheduling workflow',
-      category: 'Scheduling',
-      icon: Calendar,
-      color: 'bg-purple-500'
-    },
-    {
-      id: 4,
-      name: 'Lead Scoring',
-      description: 'Automatically score leads based on behavior',
-      category: 'Lead Management',
-      icon: Target,
-      color: 'bg-orange-500'
-    }
-  ]
+  const templates = []
 
   const WorkflowCard = ({ workflow }) => (
     <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
@@ -267,8 +202,8 @@ const Automation = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Automation</h1>
-          <p className="text-gray-600 mt-1">Automate your lead management and follow-up processes</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('automation.title') || 'Automation'}</h1>
+          <p className="text-gray-600 mt-1">{t('automation.subtitle') || 'Automate your lead management and follow-up processes'}</p>
         </div>
         
         <button
@@ -276,7 +211,7 @@ const Automation = () => {
           className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors mt-4 sm:mt-0"
         >
           <Plus className="h-4 w-4 mr-2" />
-          Create Workflow
+          {t('automation.createWorkflow') || 'Create Workflow'}
         </button>
       </div>
 

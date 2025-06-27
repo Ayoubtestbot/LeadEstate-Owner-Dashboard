@@ -29,10 +29,13 @@ const Layout = ({ children }) => {
   // Safe translation function with fallback
   const safeT = (key, fallback) => {
     try {
+      if (!t || typeof t !== 'function') {
+        return fallback
+      }
       const translation = t(key)
-      return translation === key ? fallback : translation
+      return translation && translation !== key ? translation : fallback
     } catch (error) {
-      console.warn('Translation error for key:', key, error)
+      console.warn('Translation missing for key:', key)
       return fallback
     }
   }
@@ -242,7 +245,7 @@ const Layout = ({ children }) => {
               <Menu className="h-6 w-6" />
             </button>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-600">Welcome back, {user?.name}!</span>
+              <span className="text-sm text-gray-600">{safeT('common.welcomeBack', 'Welcome back')}, {user?.name}!</span>
               <LanguageToggle />
             </div>
           </div>

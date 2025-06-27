@@ -13,7 +13,8 @@ app.use(cors({
     'http://localhost:5001',
     'http://localhost:3000',
     'https://lead-estate-agency-frontend.vercel.app',
-    'https://leadestate-agency-frontend.vercel.app'
+    'https://leadestate-agency-frontend.vercel.app',
+    'https://leadestate-backend-9fih.onrender.com'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -24,11 +25,62 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// In-memory data storage
-let leads = [];
-let properties = [];
-let teamMembers = [];
-let users = [];
+// Persistent in-memory data storage with file backup
+const fs = require('fs');
+const path = require('path');
+
+const DATA_FILE = path.join(__dirname, '../data/storage.json');
+
+// Ensure data directory exists
+const dataDir = path.dirname(DATA_FILE);
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+// Load data from file or initialize empty
+let persistentData = {
+  leads: [],
+  properties: [],
+  teamMembers: [],
+  users: []
+};
+
+// Load existing data
+try {
+  if (fs.existsSync(DATA_FILE)) {
+    const fileData = fs.readFileSync(DATA_FILE, 'utf8');
+    persistentData = JSON.parse(fileData);
+    console.log('✅ Loaded existing data from storage file');
+  }
+} catch (error) {
+  console.warn('⚠️ Could not load existing data, starting fresh:', error.message);
+}
+
+// Save data to file
+const saveData = () => {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(persistentData, null, 2));
+    console.log('💾 Data saved to persistent storage');
+  } catch (error) {
+    console.error('❌ Failed to save data:', error.message);
+  }
+};
+
+// Auto-save every 30 seconds
+setInterval(saveData, 30000);
+
+// Save on process exit
+process.on('SIGINT', () => {
+  console.log('\n🔄 Saving data before exit...');
+  saveData();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n🔄 Saving data before termination...');
+  saveData();
+  process.exit(0);
+});
 
 // Helper function to generate IDs
 const generateId = () => Date.now().toString() + Math.random().toString(36).substr(2, 9);
@@ -37,15 +89,15 @@ const generateId = () => Date.now().toString() + Math.random().toString(36).subs
 app.get('/api/status', (req, res) => {
   res.json({
     success: true,
-    message: 'LeadEstate API is running (Memory Mode)',
+    message: 'LeadEstate API is running (Production Mode)',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    storage: 'in-memory',
+    environment: process.env.NODE_ENV || 'production',
+    storage: 'persistent-file-based',
     data: {
-      leads: leads.length,
-      properties: properties.length,
-      teamMembers: teamMembers.length,
-      users: users.length
+      leads: persistentData.leads.length,
+      properties: persistentData.properties.length,
+      teamMembers: persistentData.teamMembers.length,
+      users: persistentData.users.length
     }
   });
 });
@@ -83,8 +135,8 @@ app.post('/api/auth/login', (req, res) => {
 app.get('/api/leads', (req, res) => {
   res.json({
     success: true,
-    data: leads,
-    count: leads.length
+    data: persistentData.leads,
+    count: persistentData.leads.length
   });
 });
 
@@ -97,7 +149,8 @@ app.post('/api/leads', (req, res) => {
     updatedAt: new Date().toISOString()
   };
   
-  leads.push(newLead);
+  persistentData.leads.push(newLead);
+  saveData();
   
   res.status(201).json({
     success: true,
@@ -110,7 +163,7 @@ app.put('/api/leads/:id', (req, res) => {
   const { id } = req.params;
   const updateData = req.body;
   
-  const leadIndex = leads.findIndex(lead => lead.id === id);
+  const leadIndex = persistentData.leads.findIndex(lead => lead.id === id);
   if (leadIndex === -1) {
     return res.status(404).json({
       success: false,
@@ -118,22 +171,24 @@ app.put('/api/leads/:id', (req, res) => {
     });
   }
   
-  leads[leadIndex] = {
-    ...leads[leadIndex],
+  persistentData.leads[leadIndex] = {
+    ...persistentData.leads[leadIndex],
     ...updateData,
     updatedAt: new Date().toISOString()
   };
   
+  saveData();
+  
   res.json({
     success: true,
-    data: leads[leadIndex],
+    data: persistentData.leads[leadIndex],
     message: 'Lead updated successfully'
   });
 });
 
 app.delete('/api/leads/:id', (req, res) => {
   const { id } = req.params;
-  const leadIndex = leads.findIndex(lead => lead.id === id);
+  const leadIndex = persistentData.leads.findIndex(lead => lead.id === id);
   
   if (leadIndex === -1) {
     return res.status(404).json({
@@ -142,7 +197,8 @@ app.delete('/api/leads/:id', (req, res) => {
     });
   }
   
-  leads.splice(leadIndex, 1);
+  persistentData.leads.splice(leadIndex, 1);
+  saveData();
   
   res.json({
     success: true,
@@ -154,8 +210,8 @@ app.delete('/api/leads/:id', (req, res) => {
 app.get('/api/properties', (req, res) => {
   res.json({
     success: true,
-    data: properties,
-    count: properties.length
+    data: persistentData.properties,
+    count: persistentData.properties.length
   });
 });
 
@@ -168,7 +224,8 @@ app.post('/api/properties', (req, res) => {
     updatedAt: new Date().toISOString()
   };
   
-  properties.push(newProperty);
+  persistentData.properties.push(newProperty);
+  saveData();
   
   res.status(201).json({
     success: true,
@@ -181,8 +238,8 @@ app.post('/api/properties', (req, res) => {
 app.get('/api/team', (req, res) => {
   res.json({
     success: true,
-    data: teamMembers,
-    count: teamMembers.length
+    data: persistentData.teamMembers,
+    count: persistentData.teamMembers.length
   });
 });
 
@@ -197,7 +254,8 @@ app.post('/api/team', (req, res) => {
     updatedAt: new Date().toISOString()
   };
   
-  teamMembers.push(newMember);
+  persistentData.teamMembers.push(newMember);
+  saveData();
   
   res.status(201).json({
     success: true,
@@ -210,7 +268,7 @@ app.put('/api/team/:id', (req, res) => {
   const { id } = req.params;
   const updateData = req.body;
   
-  const memberIndex = teamMembers.findIndex(member => member.id === id);
+  const memberIndex = persistentData.teamMembers.findIndex(member => member.id === id);
   if (memberIndex === -1) {
     return res.status(404).json({
       success: false,
@@ -218,22 +276,24 @@ app.put('/api/team/:id', (req, res) => {
     });
   }
   
-  teamMembers[memberIndex] = {
-    ...teamMembers[memberIndex],
+  persistentData.teamMembers[memberIndex] = {
+    ...persistentData.teamMembers[memberIndex],
     ...updateData,
     updatedAt: new Date().toISOString()
   };
   
+  saveData();
+  
   res.json({
     success: true,
-    data: teamMembers[memberIndex],
+    data: persistentData.teamMembers[memberIndex],
     message: 'Team member updated successfully'
   });
 });
 
 app.delete('/api/team/:id', (req, res) => {
   const { id } = req.params;
-  const memberIndex = teamMembers.findIndex(member => member.id === id);
+  const memberIndex = persistentData.teamMembers.findIndex(member => member.id === id);
   
   if (memberIndex === -1) {
     return res.status(404).json({
@@ -242,7 +302,8 @@ app.delete('/api/team/:id', (req, res) => {
     });
   }
   
-  teamMembers.splice(memberIndex, 1);
+  persistentData.teamMembers.splice(memberIndex, 1);
+  saveData();
   
   res.json({
     success: true,
@@ -253,10 +314,11 @@ app.delete('/api/team/:id', (req, res) => {
 // Dashboard stats endpoint
 app.get('/api/dashboard/stats', (req, res) => {
   const stats = {
-    totalLeads: leads.length,
-    availableProperties: properties.length,
-    conversionRate: leads.length > 0 ? ((leads.filter(l => l.status === 'closed_won').length / leads.length) * 100).toFixed(1) : 0,
-    closedWonLeads: leads.filter(l => l.status === 'closed_won').length
+    totalLeads: persistentData.leads.length,
+    availableProperties: persistentData.properties.length,
+    conversionRate: persistentData.leads.length > 0 ? 
+      ((persistentData.leads.filter(l => l.status === 'closed_won').length / persistentData.leads.length) * 100).toFixed(1) : 0,
+    closedWonLeads: persistentData.leads.filter(l => l.status === 'closed_won').length
   };
   
   res.json({
@@ -286,8 +348,9 @@ app.use((error, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 LeadEstate API Server running on port ${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`💾 Storage: In-Memory (for development)`);
-  console.log(`🌐 CORS enabled for: http://localhost:5001`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'production'}`);
+  console.log(`💾 Storage: Persistent File-Based`);
+  console.log(`🌐 CORS enabled for production domains`);
   console.log(`📡 API Status: http://localhost:${PORT}/api/status`);
+  console.log(`💾 Data file: ${DATA_FILE}`);
 });
