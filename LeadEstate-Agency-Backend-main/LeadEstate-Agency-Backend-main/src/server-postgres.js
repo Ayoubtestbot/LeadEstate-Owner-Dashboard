@@ -3,9 +3,39 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const { Pool } = require('pg');
+const multer = require('multer');
+const path = require('path');
+const twilio = require('twilio');
 require('dotenv').config();
 
 const app = express();
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/') // Make sure this directory exists
+  },
+  filename: function (req, file, cb) {
+    // Generate unique filename
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+    cb(null, 'property-' + uniqueSuffix + path.extname(file.originalname))
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: function (req, file, cb) {
+    // Check file type
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed!'), false);
+    }
+  }
+});
 
 // Basic middleware
 app.use(helmet());
@@ -26,11 +56,23 @@ app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Serve uploaded images statically
+app.use('/uploads', express.static('uploads'));
+
 // PostgreSQL connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
+
+// Twilio client initialization
+let twilioClient = null;
+if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+  twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  console.log('✅ Twilio client initialized');
+} else {
+  console.log('⚠️ Twilio credentials not found - WhatsApp messages will be logged only');
+}
 
 // Initialize database tables
 const initDatabase = async () => {
@@ -91,24 +133,31 @@ const initDatabase = async () => {
       ADD COLUMN IF NOT EXISTS assigned_to VARCHAR(255)
     `);
 
-    // Ensure properties table exists (force recreation if needed)
-    console.log('🔧 Ensuring properties table exists...');
+    // Force recreate properties table with correct schema
+    console.log('🔧 Force recreating properties table...');
+    try {
+      await pool.query(`DROP TABLE IF EXISTS properties CASCADE`);
+      console.log('✅ Dropped old properties table');
+    } catch (error) {
+      console.log('⚠️ No existing properties table to drop');
+    }
+
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS properties (
+      CREATE TABLE properties (
         id VARCHAR(255) PRIMARY KEY,
         title VARCHAR(255) NOT NULL,
-        type VARCHAR(255),
-        price DECIMAL,
-        location VARCHAR(255),
-        bedrooms INTEGER,
-        bathrooms INTEGER,
-        area DECIMAL,
-        description TEXT,
-        status VARCHAR(255) DEFAULT 'available',
+        type VARCHAR(255) DEFAULT 'apartment',
+        price DECIMAL DEFAULT 0,
+        address VARCHAR(255) DEFAULT '',
+        city VARCHAR(255) DEFAULT '',
+        surface DECIMAL DEFAULT 0,
+        description TEXT DEFAULT '',
+        image_url VARCHAR(500) DEFAULT '',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
+    console.log('✅ Created new properties table with correct schema');
 
     console.log('✅ Database tables initialized and migrated successfully');
   } catch (error) {
@@ -128,6 +177,116 @@ const generateId = () => {
     return v.toString(16);
   });
 };
+
+// WhatsApp welcome message function with Twilio
+async function sendWelcomeWhatsAppMessage(lead) {
+  try {
+    // Get agent information
+    const agentResult = await pool.query('SELECT * FROM team_members WHERE name = $1', [lead.assignedTo]);
+    const agent = agentResult.rows[0];
+
+    if (!agent) {
+      console.log('⚠️ Agent not found for WhatsApp message');
+      return { success: false, message: 'Agent not found' };
+    }
+
+    // Format phone number for WhatsApp (international format)
+    let phoneNumber = lead.phone.replace(/\D/g, '');
+
+    // Handle French phone numbers
+    if (phoneNumber.startsWith('0')) {
+      phoneNumber = '33' + phoneNumber.substring(1); // Remove leading 0 and add country code
+    } else if (!phoneNumber.startsWith('33') && !phoneNumber.startsWith('+33')) {
+      phoneNumber = '33' + phoneNumber; // Add French country code
+    }
+
+    // Ensure it starts with + for Twilio
+    if (!phoneNumber.startsWith('+')) {
+      phoneNumber = '+' + phoneNumber;
+    }
+
+    // Create welcome message
+    const message = `🏠 *Bienvenue chez LeadEstate !*
+
+Bonjour ${lead.name} !
+
+Merci de votre intérêt pour nos services immobiliers. Je suis ${agent.name}, votre conseiller dédié.
+
+👤 *Votre conseiller :* ${agent.name}
+📱 *Mon numéro :* ${agent.phone || '+33 1 23 45 67 89'}
+📧 *Mon email :* ${agent.email || 'contact@leadestate.com'}
+
+Je suis là pour vous accompagner dans votre projet immobilier. N'hésitez pas à me contacter pour toute question !
+
+À très bientôt,
+${agent.name}
+*LeadEstate - Votre partenaire immobilier* 🏡`;
+
+    console.log('📱 Preparing WhatsApp message for:', lead.name);
+    console.log('📞 Phone:', phoneNumber);
+    console.log('👤 Agent:', agent.name);
+
+    // Try to send via Twilio if configured
+    if (twilioClient && process.env.TWILIO_WHATSAPP_FROM) {
+      try {
+        const twilioMessage = await twilioClient.messages.create({
+          from: `whatsapp:${process.env.TWILIO_WHATSAPP_FROM}`,
+          to: `whatsapp:${phoneNumber}`,
+          body: message
+        });
+
+        console.log('✅ WhatsApp message sent successfully via Twilio!');
+        console.log('📧 Message SID:', twilioMessage.sid);
+        console.log('📊 Status:', twilioMessage.status);
+
+        return {
+          success: true,
+          method: 'twilio',
+          messageSid: twilioMessage.sid,
+          status: twilioMessage.status,
+          agent: agent.name,
+          leadName: lead.name,
+          phoneNumber: phoneNumber
+        };
+
+      } catch (twilioError) {
+        console.error('❌ Twilio WhatsApp send failed:', twilioError.message);
+
+        // Fallback to URL method
+        const whatsappUrl = `https://wa.me/${phoneNumber.replace('+', '')}?text=${encodeURIComponent(message)}`;
+
+        return {
+          success: true,
+          method: 'fallback_url',
+          whatsappUrl: whatsappUrl,
+          agent: agent.name,
+          leadName: lead.name,
+          phoneNumber: phoneNumber,
+          error: twilioError.message
+        };
+      }
+    } else {
+      // No Twilio configured - provide URL for manual sending
+      const whatsappUrl = `https://wa.me/${phoneNumber.replace('+', '')}?text=${encodeURIComponent(message)}`;
+
+      console.log('📱 Twilio not configured - WhatsApp URL prepared');
+      console.log('🔗 WhatsApp URL:', whatsappUrl);
+
+      return {
+        success: true,
+        method: 'url_only',
+        whatsappUrl: whatsappUrl,
+        agent: agent.name,
+        leadName: lead.name,
+        phoneNumber: phoneNumber
+      };
+    }
+
+  } catch (error) {
+    console.error('❌ Error in WhatsApp welcome message:', error);
+    throw error;
+  }
+}
 
 // Status endpoint
 app.get('/api/status', (req, res) => {
@@ -307,6 +466,7 @@ app.post('/api/leads', async (req, res) => {
     console.log('📝 Received lead data:', req.body);
 
     const leadData = req.body;
+    console.log('👤 Assigned to field:', leadData.assignedTo);
 
     // Split name into first_name and last_name
     const nameParts = (leadData.name || '').split(' ');
@@ -324,6 +484,7 @@ app.post('/api/leads', async (req, res) => {
       budget: leadData.budget ? parseFloat(leadData.budget) : null,
       notes: leadData.notes || '',
       status: leadData.status || 'new',
+      assigned_to: leadData.assignedTo || null, // Include assigned agent
       agency_id: 'default-agency', // Default agency ID
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -332,13 +493,13 @@ app.post('/api/leads', async (req, res) => {
     console.log('💾 Saving lead to database:', newLead);
 
     const result = await pool.query(`
-      INSERT INTO leads (id, first_name, last_name, email, phone, whatsapp, source, budget, notes, status, agency_id, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      INSERT INTO leads (id, first_name, last_name, email, phone, whatsapp, source, budget, notes, status, assigned_to, agency_id, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *
     `, [
       newLead.id, newLead.first_name, newLead.last_name, newLead.email, newLead.phone,
       newLead.whatsapp, newLead.source, newLead.budget, newLead.notes,
-      newLead.status, newLead.agency_id, newLead.created_at, newLead.updated_at
+      newLead.status, newLead.assigned_to, newLead.agency_id, newLead.created_at, newLead.updated_at
     ]);
 
     console.log('✅ Lead saved successfully:', result.rows[0]);
@@ -360,11 +521,35 @@ app.post('/api/leads', async (req, res) => {
       updated_at: result.rows[0].updated_at
     };
 
-    res.status(201).json({
+    // Send welcome WhatsApp message if phone number is provided and lead is assigned
+    let whatsappResult = null;
+    if (result.rows[0].phone && result.rows[0].assigned_to) {
+      try {
+        whatsappResult = await sendWelcomeWhatsAppMessage(responseData);
+        console.log('📱 WhatsApp welcome result:', whatsappResult);
+      } catch (whatsappError) {
+        console.log('⚠️ WhatsApp message failed (non-critical):', whatsappError.message);
+        whatsappResult = { success: false, error: whatsappError.message };
+      }
+    }
+
+    // Include WhatsApp status in response
+    const response = {
       success: true,
       data: responseData,
       message: 'Lead created successfully'
-    });
+    };
+
+    if (whatsappResult) {
+      response.whatsapp = whatsappResult;
+      if (whatsappResult.success && whatsappResult.method === 'twilio') {
+        response.message += ' - WhatsApp welcome message sent automatically!';
+      } else if (whatsappResult.success && whatsappResult.method === 'url_only') {
+        response.message += ' - WhatsApp welcome message prepared (Twilio not configured)';
+      }
+    }
+
+    res.status(201).json(response);
   } catch (error) {
     console.error('❌ Error creating lead:', error);
     console.error('❌ Error details:', error.message);
@@ -490,6 +675,36 @@ app.get('/api/properties', async (req, res) => {
   }
 });
 
+// POST /api/properties/upload - Upload property image
+app.post('/api/properties/upload', upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No image file uploaded'
+      });
+    }
+
+    const imageUrl = `/uploads/${req.file.filename}`;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        imageUrl: imageUrl,
+        filename: req.file.filename
+      },
+      message: 'Image uploaded successfully'
+    });
+  } catch (error) {
+    console.error('❌ Error uploading image:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to upload image',
+      error: error.message
+    });
+  }
+});
+
 app.post('/api/properties', async (req, res) => {
   try {
     console.log('📝 Creating property with data:', req.body);
@@ -500,12 +715,11 @@ app.post('/api/properties', async (req, res) => {
       title: propertyData.title,
       type: propertyData.type,
       price: propertyData.price ? parseFloat(propertyData.price) : null,
-      location: propertyData.location,
-      bedrooms: propertyData.bedrooms ? parseInt(propertyData.bedrooms) : null,
-      bathrooms: propertyData.bathrooms ? parseInt(propertyData.bathrooms) : null,
-      area: propertyData.area ? parseFloat(propertyData.area) : null,
+      address: propertyData.address,
+      city: propertyData.city,
+      surface: propertyData.surface ? parseFloat(propertyData.surface) : null,
       description: propertyData.description,
-      status: propertyData.status || 'available',
+      image_url: propertyData.image_url || '',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -513,14 +727,13 @@ app.post('/api/properties', async (req, res) => {
     console.log('💾 Saving property to database:', newProperty);
 
     const result = await pool.query(`
-      INSERT INTO properties (id, title, type, price, location, bedrooms, bathrooms, area, description, status, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      INSERT INTO properties (id, title, type, price, address, city, surface, description, image_url, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *
     `, [
       newProperty.id, newProperty.title, newProperty.type, newProperty.price,
-      newProperty.location, newProperty.bedrooms, newProperty.bathrooms,
-      newProperty.area, newProperty.description, newProperty.status,
-      newProperty.created_at, newProperty.updated_at
+      newProperty.address, newProperty.city, newProperty.surface, newProperty.description,
+      newProperty.image_url, newProperty.created_at, newProperty.updated_at
     ]);
 
     console.log('✅ Property saved successfully:', result.rows[0]);
@@ -539,10 +752,20 @@ app.post('/api/properties', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error creating property:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      stack: error.stack
+    });
     res.status(500).json({
       success: false,
       message: 'Failed to create property',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Database error'
+      error: error.message,
+      details: {
+        code: error.code,
+        detail: error.detail
+      }
     });
   }
 });
@@ -559,21 +782,18 @@ app.put('/api/properties/:id', async (req, res) => {
         title = COALESCE($2, title),
         type = COALESCE($3, type),
         price = COALESCE($4, price),
-        location = COALESCE($5, location),
-        bedrooms = COALESCE($6, bedrooms),
-        bathrooms = COALESCE($7, bathrooms),
-        area = COALESCE($8, area),
-        description = COALESCE($9, description),
-        status = COALESCE($10, status),
-        updated_at = $11
+        address = COALESCE($5, address),
+        city = COALESCE($6, city),
+        surface = COALESCE($7, surface),
+        description = COALESCE($8, description),
+        image_url = COALESCE($9, image_url),
+        updated_at = $10
       WHERE id = $1
       RETURNING *
     `, [
       id, updateData.title, updateData.type, updateData.price ? parseFloat(updateData.price) : null,
-      updateData.location, updateData.bedrooms ? parseInt(updateData.bedrooms) : null,
-      updateData.bathrooms ? parseInt(updateData.bathrooms) : null,
-      updateData.area ? parseFloat(updateData.area) : null, updateData.description,
-      updateData.status, new Date().toISOString()
+      updateData.address, updateData.city, updateData.surface ? parseFloat(updateData.surface) : null,
+      updateData.description, updateData.image_url, new Date().toISOString()
     ]);
 
     if (result.rows.length === 0) {
@@ -774,6 +994,60 @@ app.use((error, req, res, next) => {
     message: 'Internal server error',
     error: process.env.NODE_ENV === 'development' ? error.message : 'Something went wrong'
   });
+});
+
+// WhatsApp notification endpoint
+app.post('/api/whatsapp/welcome/:leadId', async (req, res) => {
+  try {
+    const { leadId } = req.params;
+
+    // Get lead information
+    const leadResult = await pool.query('SELECT * FROM leads WHERE id = $1', [leadId]);
+    if (leadResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Lead not found'
+      });
+    }
+
+    const lead = leadResult.rows[0];
+    const leadData = {
+      id: lead.id,
+      name: `${lead.first_name} ${lead.last_name}`.trim(),
+      phone: lead.phone,
+      assignedTo: lead.assigned_to
+    };
+
+    if (!leadData.phone) {
+      return res.status(400).json({
+        success: false,
+        message: 'Lead has no phone number'
+      });
+    }
+
+    if (!leadData.assignedTo) {
+      return res.status(400).json({
+        success: false,
+        message: 'Lead is not assigned to any agent'
+      });
+    }
+
+    const result = await sendWelcomeWhatsAppMessage(leadData);
+
+    res.json({
+      success: true,
+      data: result,
+      message: 'WhatsApp welcome message prepared successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Error in WhatsApp welcome endpoint:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to prepare WhatsApp message',
+      error: error.message
+    });
+  }
 });
 
 const PORT = process.env.PORT || 5001;

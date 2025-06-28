@@ -1,37 +1,100 @@
 import { useState } from 'react'
-import { X, Home, DollarSign, MapPin, Bed, Bath } from 'lucide-react'
+import { X, Home, DollarSign, MapPin, Upload, Image } from 'lucide-react'
 
 const AddPropertyModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     title: '',
-    type: 'house',
+    type: 'apartment',
     price: '',
     address: '',
     city: '',
-    state: '',
-    zipCode: '',
-    bedrooms: '',
-    bathrooms: '',
-    area: '',
-    description: ''
+    surface: '',
+    description: '',
+    image_url: ''
   })
 
-  const handleSubmit = (e) => {
+  const [selectedImage, setSelectedImage] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
+  const [uploading, setUploading] = useState(false)
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setSelectedImage(file)
+
+      // Create preview
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setImagePreview(e.target.result)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const uploadImage = async () => {
+    if (!selectedImage) return null
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('image', selectedImage)
+
+      const response = await fetch('https://leadestate-backend-9fih.onrender.com/api/properties/upload', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        return `https://leadestate-backend-9fih.onrender.com${result.data.imageUrl}`
+      } else {
+        throw new Error('Failed to upload image')
+      }
+    } catch (error) {
+      console.error('Error uploading image:', error)
+      return null
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    onSubmit(formData)
+
+    // Upload image first if selected
+    let imageUrl = ''
+    if (selectedImage) {
+      imageUrl = await uploadImage()
+    }
+
+    // Format data for backend compatibility
+    const propertyData = {
+      title: formData.title,
+      type: formData.type,
+      price: parseFloat(formData.price) || 0,
+      address: formData.address,
+      city: formData.city,
+      surface: parseFloat(formData.surface) || 0,
+      description: formData.description,
+      image_url: imageUrl
+    }
+
+    console.log('🏠 Submitting property data:', propertyData)
+    onSubmit(propertyData)
+
+    // Reset form
     setFormData({
       title: '',
-      type: 'house',
+      type: 'apartment',
       price: '',
       address: '',
       city: '',
-      state: '',
-      zipCode: '',
-      bedrooms: '',
-      bathrooms: '',
-      area: '',
-      description: ''
+      surface: '',
+      description: '',
+      image_url: ''
     })
+    setSelectedImage(null)
+    setImagePreview(null)
     onClose()
   }
 
@@ -97,12 +160,13 @@ const AddPropertyModal = ({ isOpen, onClose, onSubmit }) => {
                   required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="house">House</option>
                   <option value="apartment">Apartment</option>
-                  <option value="condo">Condo</option>
-                  <option value="townhouse">Townhouse</option>
-                  <option value="land">Land</option>
-                  <option value="commercial">Commercial</option>
+                  <option value="house">House</option>
+                  <option value="studio">Studio</option>
+                  <option value="loft">Loft</option>
+                  <option value="duplex">Duplex</option>
+                  <option value="penthouse">Penthouse</option>
+                  <option value="villa">Villa</option>
                 </select>
               </div>
 
@@ -128,7 +192,7 @@ const AddPropertyModal = ({ isOpen, onClose, onSubmit }) => {
             {/* Address */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Street Address *
+                Address *
               </label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -139,109 +203,96 @@ const AddPropertyModal = ({ isOpen, onClose, onSubmit }) => {
                   onChange={handleChange}
                   required
                   className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="123 Main Street"
+                  placeholder="e.g., 123 Rue de la Paix"
                 />
               </div>
             </div>
 
-            {/* City, State, Zip */}
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  City *
-                </label>
-                <input
-                  type="text"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="New York"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  State
-                </label>
-                <input
-                  type="text"
-                  name="state"
-                  value={formData.state}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="NY"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Zip Code
-                </label>
-                <input
-                  type="text"
-                  name="zipCode"
-                  value={formData.zipCode}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="10001"
-                />
-              </div>
+            {/* City */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                City *
+              </label>
+              <input
+                type="text"
+                name="city"
+                value={formData.city}
+                onChange={handleChange}
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., Paris, Neuilly-sur-Seine"
+              />
             </div>
 
-            {/* Bedrooms, Bathrooms, Area */}
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Bedrooms
-                </label>
-                <div className="relative">
-                  <Bed className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="number"
-                    name="bedrooms"
-                    value={formData.bedrooms}
-                    onChange={handleChange}
-                    min="0"
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="3"
-                  />
-                </div>
-              </div>
+            {/* Surface */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Surface (m²) *
+              </label>
+              <input
+                type="number"
+                name="surface"
+                value={formData.surface}
+                onChange={handleChange}
+                min="0"
+                step="0.01"
+                required
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g., 75"
+              />
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Bathrooms
-                </label>
-                <div className="relative">
-                  <Bath className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="number"
-                    name="bathrooms"
-                    value={formData.bathrooms}
-                    onChange={handleChange}
-                    min="0"
-                    step="0.5"
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="2.5"
-                  />
+            {/* Image Upload */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Property Image
+              </label>
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-md hover:border-gray-400 transition-colors">
+                <div className="space-y-1 text-center">
+                  {imagePreview ? (
+                    <div className="relative">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="mx-auto h-32 w-32 object-cover rounded-md"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedImage(null)
+                          setImagePreview(null)
+                        }}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <Image className="mx-auto h-12 w-12 text-gray-400" />
+                      <div className="flex text-sm text-gray-600">
+                        <label
+                          htmlFor="image-upload"
+                          className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-blue-500"
+                        >
+                          <span>Upload an image</span>
+                          <input
+                            id="image-upload"
+                            name="image-upload"
+                            type="file"
+                            accept="image/*"
+                            className="sr-only"
+                            onChange={handleImageChange}
+                          />
+                        </label>
+                        <p className="pl-1">or drag and drop</p>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        PNG, JPG, GIF up to 5MB
+                      </p>
+                    </>
+                  )}
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Area (sq ft)
-                </label>
-                <input
-                  type="number"
-                  name="area"
-                  value={formData.area}
-                  onChange={handleChange}
-                  min="0"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="2500"
-                />
               </div>
             </div>
 
@@ -271,9 +322,17 @@ const AddPropertyModal = ({ isOpen, onClose, onSubmit }) => {
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={uploading}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Add Property
+                {uploading ? (
+                  <div className="flex items-center">
+                    <Upload className="animate-spin h-4 w-4 mr-2" />
+                    Uploading...
+                  </div>
+                ) : (
+                  'Add Property'
+                )}
               </button>
             </div>
           </form>
