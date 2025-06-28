@@ -140,31 +140,38 @@ const initDatabase = async () => {
       ADD COLUMN IF NOT EXISTS language VARCHAR(10) DEFAULT 'fr'
     `);
 
-    // Force recreate properties table with correct schema
-    console.log('🔧 Force recreating properties table...');
+    // Add missing columns to properties table (SAFE - preserves data)
+    console.log('🔧 Updating properties table schema safely...');
     try {
-      await pool.query(`DROP TABLE IF EXISTS properties CASCADE`);
-      console.log('✅ Dropped old properties table');
-    } catch (error) {
-      console.log('⚠️ No existing properties table to drop');
-    }
+      await pool.query(`
+        ALTER TABLE properties
+        ADD COLUMN IF NOT EXISTS address VARCHAR(255) DEFAULT ''
+      `);
 
-    await pool.query(`
-      CREATE TABLE properties (
-        id VARCHAR(255) PRIMARY KEY,
-        title VARCHAR(255) NOT NULL,
-        type VARCHAR(255) DEFAULT 'apartment',
-        price DECIMAL DEFAULT 0,
-        address VARCHAR(255) DEFAULT '',
-        city VARCHAR(255) DEFAULT '',
-        surface DECIMAL DEFAULT 0,
-        description TEXT DEFAULT '',
-        image_url VARCHAR(500) DEFAULT '',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    console.log('✅ Created new properties table with correct schema');
+      await pool.query(`
+        ALTER TABLE properties
+        ADD COLUMN IF NOT EXISTS city VARCHAR(255) DEFAULT ''
+      `);
+
+      await pool.query(`
+        ALTER TABLE properties
+        ADD COLUMN IF NOT EXISTS surface DECIMAL DEFAULT 0
+      `);
+
+      await pool.query(`
+        ALTER TABLE properties
+        ADD COLUMN IF NOT EXISTS description TEXT DEFAULT ''
+      `);
+
+      await pool.query(`
+        ALTER TABLE properties
+        ADD COLUMN IF NOT EXISTS image_url VARCHAR(500) DEFAULT ''
+      `);
+
+      console.log('✅ Properties table schema updated safely (data preserved)');
+    } catch (error) {
+      console.log('⚠️ Properties table schema update failed:', error.message);
+    }
 
     console.log('✅ Database tables initialized and migrated successfully');
   } catch (error) {
