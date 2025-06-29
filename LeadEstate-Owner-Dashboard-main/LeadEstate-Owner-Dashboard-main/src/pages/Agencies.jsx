@@ -22,6 +22,7 @@ import AddAgencyModal from '../components/AddAgencyModal'
 import EditAgencyModal from '../components/EditAgencyModal'
 import AgencySettingsModal from '../components/AgencySettingsModal'
 import ManageUsersModal from '../components/ManageUsersModal'
+import apiService from '../services/apiService'
 
 const Agencies = () => {
   const [searchTerm, setSearchTerm] = useState('')
@@ -137,10 +138,58 @@ const Agencies = () => {
 
   const [agencies, setAgencies] = useState(getInitialAgencies)
 
+  // Load agencies from API
+  const loadAgencies = async () => {
+    try {
+      console.log('🔄 Loading agencies from API...')
+      const result = await apiService.getAgencies()
+
+      if (result.success) {
+        console.log('✅ Agencies loaded:', result.data)
+
+        // Transform API data to match UI format
+        const transformedAgencies = result.data.map(agency => ({
+          id: agency.id,
+          name: agency.name,
+          domain: agency.settings?.domain || `${agency.name.toLowerCase().replace(/\s+/g, '-')}.leadestate.com`,
+          status: agency.status,
+          plan: 'Professional', // Default plan
+          users: agency.active_users || 0,
+          leads: agency.total_leads || 0,
+          revenue: '$0', // Would come from billing system
+          owner: {
+            name: agency.manager_name || 'Unknown',
+            email: agency.manager_email || 'unknown@email.com',
+            phone: ''
+          },
+          companySize: agency.settings?.companySize || 'small',
+          customBranding: agency.settings?.customBranding || {},
+          autoSetup: agency.settings?.autoSetup || true,
+          createdAt: agency.created_at,
+          lastActive: agency.manager_last_login || 'Never',
+          repositories: agency.settings?.repositories || null
+        }))
+
+        setAgencies(transformedAgencies)
+      } else {
+        console.error('❌ Failed to load agencies:', result.error)
+        // Keep existing mock data if API fails
+      }
+    } catch (error) {
+      console.error('❌ Error loading agencies:', error)
+      // Keep existing mock data if API fails
+    }
+  }
+
   // Save agencies to localStorage whenever agencies change
   useEffect(() => {
     localStorage.setItem('agencies', JSON.stringify(agencies))
   }, [agencies])
+
+  // Load agencies on component mount
+  useEffect(() => {
+    loadAgencies()
+  }, [])
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -218,61 +267,81 @@ const Agencies = () => {
     return { frontendPort, backendPort }
   }
 
-  const handleAddAgency = (agencyData) => {
+  const handleAddAgency = async (agencyData) => {
     console.log('*** AGENCIES.JSX handleAddAgency called with:', agencyData)
 
     try {
-      // Generate unique ports
-      const { frontendPort, backendPort } = generatePorts()
-      console.log('Generated ports:', frontendPort, backendPort)
-
-      // Create new agency
-      const newAgency = {
-        id: Date.now(),
-        name: agencyData.agencyName,
-        domain: `${agencyData.domain}.yourdomain.com`,
-        status: agencyData.autoSetup ? 'active' : 'setup',
-        plan: agencyData.plan.charAt(0).toUpperCase() + agencyData.plan.slice(1),
-        users: 1,
-        leads: 0,
-        frontendPort,
-        backendPort,
-        revenue: '$0',
-        owner: {
-          name: agencyData.ownerName,
-          email: agencyData.ownerEmail,
-          phone: agencyData.ownerPhone || ''
-        },
-        companySize: agencyData.companySize,
-        customBranding: agencyData.customBranding,
-        autoSetup: agencyData.autoSetup,
-        createdAt: new Date().toISOString(),
-        lastActive: 'Just now'
-      }
-
-      console.log('New agency object created:', newAgency)
-
-      // Update agencies list
-      setAgencies(currentAgencies => {
-        console.log('Before adding:', currentAgencies.length)
-        const newList = [...currentAgencies, newAgency]
-        console.log('After adding:', newList.length)
-        return newList
-      })
-
-      console.log('Agency added to state')
-
-      // Close modal
+      // Show loading state
       setShowAddAgency(false)
-      console.log('Modal closed')
 
-      // Success message
-      alert(`✅ Agency "${agencyData.agencyName}" created successfully!`)
-      console.log('Success message shown')
+      // Show loading message
+      alert('🚀 Creating agency with repositories and infrastructure...\nThis may take a few minutes.')
+
+      // Call real API to create agency
+      const result = await apiService.createAgency(agencyData)
+
+      if (result.success) {
+        console.log('✅ Agency created successfully:', result.data)
+
+        // Create agency object for UI
+        const newAgency = {
+          id: result.data.agency.id,
+          name: result.data.agency.name,
+          domain: result.data.agency.domain,
+          status: result.data.agency.status,
+          plan: agencyData.plan.charAt(0).toUpperCase() + agencyData.plan.slice(1),
+          users: 1,
+          leads: 0,
+          revenue: '$0',
+          owner: {
+            name: agencyData.ownerName,
+            email: agencyData.ownerEmail,
+            phone: agencyData.ownerPhone || ''
+          },
+          companySize: agencyData.companySize,
+          customBranding: agencyData.customBranding,
+          autoSetup: agencyData.autoSetup,
+          createdAt: result.data.createdAt,
+          lastActive: 'Just now',
+          repositories: result.data.repositories,
+          database: result.data.database,
+          manager: result.data.manager
+        }
+
+        // Update agencies list
+        setAgencies(currentAgencies => [...currentAgencies, newAgency])
+
+        // Success message with details
+        alert(`✅ Agency "${agencyData.agencyName}" created successfully!
+
+🏢 Agency Details:
+• Domain: ${result.data.agency.domain}
+• Status: ${result.data.agency.status}
+
+📁 Repositories Created:
+• Frontend: ${result.data.repositories.frontend.name}
+• Backend: ${result.data.repositories.backend.name}
+
+👤 Manager Invitation:
+• Email sent to: ${result.data.manager.email}
+• Setup link: ${result.data.manager.setupLink}
+
+🗄️ Database:
+• Name: ${result.data.database.name}
+• URL: ${result.data.database.url}
+
+The manager will receive an invitation email to set up their account.`)
+
+      } else {
+        console.error('❌ Failed to create agency:', result.error)
+        alert(`❌ Failed to create agency: ${result.error}`)
+        setShowAddAgency(true) // Reopen modal
+      }
 
     } catch (error) {
       console.error('Error in handleAddAgency:', error)
       alert('Error creating agency: ' + error.message)
+      setShowAddAgency(true) // Reopen modal
     }
   }
 
