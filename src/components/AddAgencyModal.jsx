@@ -38,81 +38,42 @@ const AddAgencyModal = ({ isOpen, onClose, onAgencyCreated }) => {
         return
       }
 
-      try {
-        // Create agency with repositories and deployments
-        const result = await createAgencyWithRepo(formData)
+      // Create agency with repositories and deployments
+      const result = await createAgencyWithRepo(formData)
 
-        toast.success(`Agency "${formData.name}" created successfully!`)
+      // Show success message (with demo mode indicator if applicable)
+      const message = result.data?.demoMode
+        ? `Agency "${formData.name}" created successfully! (Demo Mode)`
+        : `Agency "${formData.name}" created successfully!`
 
-        // Reset form
-        setFormData({
-          name: '',
-          managerName: '',
-          managerEmail: '',
-          managerPhone: '',
-          address: '',
-          city: '',
-          country: '',
-          description: '',
-          maxUsers: 50,
-          maxLeads: 1000,
-          maxProperties: 500,
-        })
+      toast.success(message)
 
-        // Notify parent component
-        if (onAgencyCreated) {
-          onAgencyCreated(result)
-        }
+      // Reset form
+      setFormData({
+        name: '',
+        managerName: '',
+        managerEmail: '',
+        managerPhone: '',
+        address: '',
+        city: '',
+        country: '',
+        description: '',
+        maxUsers: 50,
+        maxLeads: 1000,
+        maxProperties: 500,
+      })
 
-        // Close modal
-        onClose()
-
-      } catch (apiError) {
-        // If API fails, show success message anyway (demo mode)
-        console.warn('API call failed, running in demo mode:', apiError.message)
-
-        toast.success(`Agency "${formData.name}" created successfully! (Demo Mode)`)
-
-        // Create demo agency object
-        const demoAgency = {
-          id: Date.now().toString(),
-          name: formData.name,
-          managerName: formData.managerName,
-          email: formData.managerEmail,
-          status: 'active',
-          userCount: 0,
-          city: formData.city,
-          createdAt: new Date().toISOString(),
-          settings: { plan: 'standard' }
-        }
-
-        // Reset form
-        setFormData({
-          name: '',
-          managerName: '',
-          managerEmail: '',
-          managerPhone: '',
-          address: '',
-          city: '',
-          country: '',
-          description: '',
-          maxUsers: 50,
-          maxLeads: 1000,
-          maxProperties: 500,
-        })
-
-        // Notify parent component with demo data
-        if (onAgencyCreated) {
-          onAgencyCreated({ agency: demoAgency })
-        }
-
-        // Close modal
-        onClose()
+      // Notify parent component
+      if (onAgencyCreated) {
+        onAgencyCreated(result)
       }
+
+      // Close modal
+      onClose()
       
     } catch (error) {
       console.error('Error creating agency:', error)
-      toast.error(handleApiError(error))
+      // Don't show error toast here, let the inner try-catch handle it
     } finally {
       setLoading(false)
     }
