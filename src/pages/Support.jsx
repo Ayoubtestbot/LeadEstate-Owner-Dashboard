@@ -1,9 +1,28 @@
-import React, { useState } from 'react'
-import { MessageCircle, Phone, Mail, Book, Search, ExternalLink, Clock, CheckCircle } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { MessageCircle, Phone, Mail, Book, Search, ExternalLink, Clock, CheckCircle, RefreshCw, Plus } from 'lucide-react'
+import { ownerAPI, handleApiError } from '../services/api'
+import toast from 'react-hot-toast'
 
 const Support = () => {
   const [activeTab, setActiveTab] = useState('tickets')
   const [searchTerm, setSearchTerm] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadSupportData()
+  }, [])
+
+  const loadSupportData = async () => {
+    try {
+      setLoading(true)
+      const response = await ownerAPI.getSupportTickets()
+      // Keep demo data for now since backend might not be ready
+    } catch (error) {
+      console.warn('Support tickets endpoint not available, using demo data:', error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const supportTickets = [
     {

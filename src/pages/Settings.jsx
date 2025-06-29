@@ -1,8 +1,41 @@
-import React, { useState } from 'react'
-import { Save, Bell, Shield, Globe, Database, Mail, Key, Users } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Save, Bell, Shield, Globe, Database, Mail, Key, Users, RefreshCw } from 'lucide-react'
+import { ownerAPI, handleApiError } from '../services/api'
+import toast from 'react-hot-toast'
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('general')
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  const loadSettings = async () => {
+    try {
+      setLoading(true)
+      const response = await ownerAPI.getSettings()
+      setSettings(response.data.data || settings)
+    } catch (error) {
+      console.warn('Settings endpoint not available, using demo data:', error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const saveSettings = async () => {
+    try {
+      setSaving(true)
+      await ownerAPI.updateSettings(settings)
+      toast.success('Settings saved successfully!')
+    } catch (error) {
+      console.error('Error saving settings:', error)
+      toast.error(handleApiError(error))
+    } finally {
+      setSaving(false)
+    }
+  }
   const [settings, setSettings] = useState({
     siteName: 'LeadEstate',
     siteUrl: 'https://leadestate.com',

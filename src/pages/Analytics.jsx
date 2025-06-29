@@ -1,8 +1,28 @@
-import React, { useState } from 'react'
-import { BarChart3, TrendingUp, Users, Building2, DollarSign, Activity, Calendar, Download } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { BarChart3, TrendingUp, Users, Building2, DollarSign, Activity, Calendar, Download, RefreshCw, ArrowUp, ArrowDown } from 'lucide-react'
+import { ownerAPI, handleApiError } from '../services/api'
+import toast from 'react-hot-toast'
 
 const Analytics = () => {
   const [timeRange, setTimeRange] = useState('30d')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadAnalytics()
+  }, [timeRange])
+
+  const loadAnalytics = async () => {
+    try {
+      setLoading(true)
+      // Try to load real analytics data
+      const response = await ownerAPI.getAnalytics(timeRange)
+      // Keep demo data for now since backend might not be ready
+    } catch (error) {
+      console.warn('Analytics endpoint not available, using demo data:', error.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const overviewStats = [
     { name: 'Total Revenue', value: '$125,430', change: '+12.5%', changeType: 'positive', icon: DollarSign },
