@@ -61,8 +61,8 @@ const Dashboard = () => {
       ])
 
       // Load recent agencies
-      const agenciesResponse = await ownerAPI.getAgencies({ limit: 5, sortBy: 'created', order: 'desc' })
-      setRecentAgencies(agenciesResponse.data.agencies || [])
+      const agenciesResponse = await ownerAPI.getAgencies({ limit: 5 })
+      setRecentAgencies(agenciesResponse.data.data || [])
 
     } catch (error) {
       console.error('Error loading dashboard data:', error)

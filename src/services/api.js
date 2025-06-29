@@ -40,14 +40,27 @@ api.interceptors.response.use(
 // Owner Dashboard API endpoints
 export const ownerAPI = {
   // Dashboard stats
-  getDashboardStats: () => api.get('/owner/dashboard/stats'),
+  getDashboardStats: () => api.get('/owner-integration/dashboard/stats', {
+    headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
+  }),
 
   // Agencies management
-  getAgencies: (params = {}) => api.get('/owner/agencies', { params }),
-  createAgency: (data) => api.post('/owner/agencies', data),
-  updateAgency: (id, data) => api.put(`/owner/agencies/${id}`, data),
-  deleteAgency: (id) => api.delete(`/owner/agencies/${id}`),
-  getAgencyDetails: (id) => api.get(`/owner/agencies/${id}`),
+  getAgencies: (params = {}) => api.get('/owner-integration/agencies', {
+    params,
+    headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
+  }),
+  createAgency: (data) => api.post('/owner-integration/create-agency', data, {
+    headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
+  }),
+  updateAgency: (id, data) => api.put(`/owner-integration/agencies/${id}`, data, {
+    headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
+  }),
+  deleteAgency: (id) => api.delete(`/owner-integration/agencies/${id}`, {
+    headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
+  }),
+  getAgencyDetails: (id) => api.get(`/owner-integration/agencies/${id}`, {
+    headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
+  }),
 
   // Analytics
   getAnalytics: (timeRange = '30d') => api.get(`/owner/analytics?range=${timeRange}`),
@@ -72,28 +85,31 @@ export const ownerAPI = {
 // Agency creation with repository setup
 export const createAgencyWithRepo = async (agencyData) => {
   try {
-    // Step 1: Create agency in database
-    const agencyResponse = await ownerAPI.createAgency(agencyData)
-    const agency = agencyResponse.data
-
-    // Step 2: Create GitHub repositories (backend, frontend, database)
-    const repoResponse = await api.post('/owner/agencies/create-repositories', {
-      agencyId: agency.id,
+    // Create agency with repositories using the backend endpoint
+    const agencyResponse = await api.post('/owner-integration/create-agency', {
       agencyName: agencyData.name,
+      managerName: agencyData.managerName,
       managerEmail: agencyData.managerEmail,
+      domain: agencyData.domain,
+      plan: agencyData.plan || 'standard',
+      companySize: agencyData.companySize || 'small',
+      customBranding: {
+        primaryColor: '#3B82F6',
+        logo: agencyData.logo || null
+      },
+      autoSetup: true,
+      ownerInfo: {
+        phone: agencyData.managerPhone,
+        address: agencyData.address,
+        city: agencyData.city,
+        country: agencyData.country,
+        description: agencyData.description
+      }
+    }, {
+      headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
     })
 
-    // Step 3: Deploy to hosting platforms
-    const deployResponse = await api.post('/owner/agencies/deploy', {
-      agencyId: agency.id,
-      repositories: repoResponse.data.repositories,
-    })
-
-    return {
-      agency,
-      repositories: repoResponse.data.repositories,
-      deployments: deployResponse.data.deployments,
-    }
+    return agencyResponse.data
   } catch (error) {
     console.error('Error creating agency with repositories:', error)
     throw error
