@@ -1,15 +1,20 @@
 import axios from 'axios'
 
-// Create axios instance
+// Base API configuration for Owner Dashboard
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://leadestate-backend-9fih.onrender.com/api'
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:6001/api',
+  baseURL: API_BASE_URL,
   timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 })
 
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('ownerToken')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -20,65 +25,90 @@ api.interceptors.request.use(
   }
 )
 
-// Response interceptor to handle errors
+// Response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
+      localStorage.removeItem('ownerToken')
       window.location.href = '/login'
     }
     return Promise.reject(error)
   }
 )
 
-// Auth API
-export const authAPI = {
-  login: (credentials) => api.post('/auth/login', credentials),
-  register: (userData) => api.post('/auth/register', userData),
-  logout: () => api.post('/auth/logout'),
-  getProfile: () => api.get('/auth/me'),
+// Owner Dashboard API endpoints
+export const ownerAPI = {
+  // Dashboard stats
+  getDashboardStats: () => api.get('/owner/dashboard/stats'),
+
+  // Agencies management
+  getAgencies: (params = {}) => api.get('/owner/agencies', { params }),
+  createAgency: (data) => api.post('/owner/agencies', data),
+  updateAgency: (id, data) => api.put(`/owner/agencies/${id}`, data),
+  deleteAgency: (id) => api.delete(`/owner/agencies/${id}`),
+  getAgencyDetails: (id) => api.get(`/owner/agencies/${id}`),
+
+  // Analytics
+  getAnalytics: (timeRange = '30d') => api.get(`/owner/analytics?range=${timeRange}`),
+  getRevenueData: (timeRange = '30d') => api.get(`/owner/analytics/revenue?range=${timeRange}`),
+  getTopAgencies: () => api.get('/owner/analytics/top-agencies'),
+
+  // Settings
+  getSettings: () => api.get('/owner/settings'),
+  updateSettings: (data) => api.put('/owner/settings', data),
+
+  // Support
+  getSupportTickets: () => api.get('/owner/support/tickets'),
+  createSupportTicket: (data) => api.post('/owner/support/tickets', data),
+  updateTicketStatus: (id, status) => api.put(`/owner/support/tickets/${id}/status`, { status }),
+
+  // Authentication
+  login: (credentials) => api.post('/owner/auth/login', credentials),
+  logout: () => api.post('/owner/auth/logout'),
+  refreshToken: () => api.post('/owner/auth/refresh'),
 }
 
-// Users API
-export const usersAPI = {
-  getAll: () => api.get('/users'),
-  getById: (id) => api.get(`/users/${id}`),
-  update: (id, data) => api.put(`/users/${id}`, data),
-  delete: (id) => api.delete(`/users/${id}`),
+// Agency creation with repository setup
+export const createAgencyWithRepo = async (agencyData) => {
+  try {
+    // Step 1: Create agency in database
+    const agencyResponse = await ownerAPI.createAgency(agencyData)
+    const agency = agencyResponse.data
+
+    // Step 2: Create GitHub repositories (backend, frontend, database)
+    const repoResponse = await api.post('/owner/agencies/create-repositories', {
+      agencyId: agency.id,
+      agencyName: agencyData.name,
+      managerEmail: agencyData.managerEmail,
+    })
+
+    // Step 3: Deploy to hosting platforms
+    const deployResponse = await api.post('/owner/agencies/deploy', {
+      agencyId: agency.id,
+      repositories: repoResponse.data.repositories,
+    })
+
+    return {
+      agency,
+      repositories: repoResponse.data.repositories,
+      deployments: deployResponse.data.deployments,
+    }
+  } catch (error) {
+    console.error('Error creating agency with repositories:', error)
+    throw error
+  }
 }
 
-// Leads API
-export const leadsAPI = {
-  getAll: (params) => api.get('/leads', { params }),
-  getById: (id) => api.get(`/leads/${id}`),
-  create: (data) => api.post('/leads', data),
-  update: (id, data) => api.put(`/leads/${id}`, data),
-  delete: (id) => api.delete(`/leads/${id}`),
-  addNote: (id, note) => api.post(`/leads/${id}/notes`, note),
-}
-
-// Properties API
-export const propertiesAPI = {
-  getAll: (params) => api.get('/properties', { params }),
-  getById: (id) => api.get(`/properties/${id}`),
-  create: (data) => api.post('/properties', data),
-  update: (id, data) => api.put(`/properties/${id}`, data),
-  delete: (id) => api.delete(`/properties/${id}`),
-}
-
-// Reports API
-export const reportsAPI = {
-  getDashboard: () => api.get('/reports/dashboard'),
-  getLeads: (params) => api.get('/reports/leads', { params }),
-}
-
-// Integrations API
-export const integrationsAPI = {
-  getStatus: () => api.get('/integrations/status'),
-  testTwilio: (data) => api.post('/integrations/twilio/test', data),
-  testBrevo: (data) => api.post('/integrations/brevo/test', data),
-  testGoogleSheets: (data) => api.post('/integrations/google-sheets/test', data),
+// Utility functions
+export const handleApiError = (error) => {
+  if (error.response) {
+    return error.response.data.message || 'An error occurred'
+  } else if (error.request) {
+    return 'Network error. Please check your connection.'
+  } else {
+    return 'An unexpected error occurred'
+  }
 }
 
 export default api

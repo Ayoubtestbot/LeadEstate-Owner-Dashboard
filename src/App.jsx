@@ -20,7 +20,7 @@ function App() {
         <div className="flex-1 flex flex-col lg:pl-64">
           <Header setSidebarOpen={setSidebarOpen} />
 
-          <main className="flex-1 py-4 sm:py-6">
+          <main className="flex-1 py-2 sm:py-4 lg:py-6">
             <div className="mx-auto max-w-7xl px-2 sm:px-4 lg:px-8">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
