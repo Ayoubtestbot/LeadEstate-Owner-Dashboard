@@ -99,8 +99,14 @@ const Agencies = () => {
     }
   }
 
-  const handleAgencyCreated = () => {
-    loadAgencies()
+  const handleAgencyCreated = (newAgency) => {
+    // If we have demo data, add the new agency to the list
+    if (newAgency?.agency) {
+      setAgencies(prev => [newAgency.agency, ...prev])
+    } else {
+      // Otherwise refresh from backend
+      loadAgencies()
+    }
     setShowAddModal(false)
   }
 

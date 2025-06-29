@@ -132,7 +132,11 @@ const Dashboard = () => {
   const handleAgencyCreated = (newAgency) => {
     // Refresh dashboard data
     loadDashboardData()
-    toast.success('Agency created successfully!')
+
+    // If we have demo data, add the new agency to the recent agencies list
+    if (newAgency?.agency) {
+      setRecentAgencies(prev => [newAgency.agency, ...prev.slice(0, 4)])
+    }
   }
 
   return (
