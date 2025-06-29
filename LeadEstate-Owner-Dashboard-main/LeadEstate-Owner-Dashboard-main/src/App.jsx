@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
 import Sidebar from './components/Sidebar'
 import Header from './components/Header'
 import Dashboard from './pages/Dashboard'
@@ -15,8 +16,10 @@ function App() {
     <Router>
       <div className="min-h-screen bg-gray-50 flex">
         <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
+        
         <div className="flex-1 flex flex-col lg:pl-64">
           <Header setSidebarOpen={setSidebarOpen} />
+
           <main className="flex-1 py-4 sm:py-6">
             <div className="mx-auto max-w-7xl px-2 sm:px-4 lg:px-8">
               <Routes>
@@ -30,6 +33,7 @@ function App() {
           </main>
         </div>
       </div>
+      <Toaster position="top-right" />
     </Router>
   )
 }
