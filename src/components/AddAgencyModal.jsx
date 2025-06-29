@@ -41,6 +41,8 @@ const AddAgencyModal = ({ isOpen, onClose, onAgencyCreated }) => {
       // Create agency with repositories and deployments
       const result = await createAgencyWithRepo(formData)
 
+      console.log('Agency creation result:', result) // Debug log
+
       // Show success message (with demo mode indicator if applicable)
       const message = result.data?.demoMode
         ? `Agency "${formData.name}" created successfully! (Demo Mode)`
@@ -63,9 +65,11 @@ const AddAgencyModal = ({ isOpen, onClose, onAgencyCreated }) => {
         maxProperties: 500,
       })
 
-      // Notify parent component
+      // Notify parent component with the correct data structure
       if (onAgencyCreated) {
-        onAgencyCreated(result)
+        // Handle both axios response (result.data) and direct response (result)
+        const agencyData = result.data?.data || result.data || result
+        onAgencyCreated(agencyData)
       }
 
       // Close modal
