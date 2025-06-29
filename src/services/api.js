@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 // Base API configuration for Owner Dashboard
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://leadestate-backend-9fih.onrender.com/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://leadestate-backend-9fih.onrender.com'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -40,25 +40,25 @@ api.interceptors.response.use(
 // Owner Dashboard API endpoints
 export const ownerAPI = {
   // Dashboard stats
-  getDashboardStats: () => api.get('/owner-integration/dashboard/stats', {
+  getDashboardStats: () => api.get('/api/owner-integration/dashboard/stats', {
     headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
   }),
 
   // Agencies management
-  getAgencies: (params = {}) => api.get('/owner-integration/agencies', {
+  getAgencies: (params = {}) => api.get('/api/owner-integration/agencies', {
     params,
     headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
   }),
-  createAgency: (data) => api.post('/owner-integration/create-agency', data, {
+  createAgency: (data) => api.post('/api/owner-integration/create-agency', data, {
     headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
   }),
-  updateAgency: (id, data) => api.put(`/owner-integration/agencies/${id}`, data, {
+  updateAgency: (id, data) => api.put(`/api/owner-integration/agencies/${id}`, data, {
     headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
   }),
-  deleteAgency: (id) => api.delete(`/owner-integration/agencies/${id}`, {
+  deleteAgency: (id) => api.delete(`/api/owner-integration/agencies/${id}`, {
     headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
   }),
-  getAgencyDetails: (id) => api.get(`/owner-integration/agencies/${id}`, {
+  getAgencyDetails: (id) => api.get(`/api/owner-integration/agencies/${id}`, {
     headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
   }),
 
@@ -86,7 +86,7 @@ export const ownerAPI = {
 export const createAgencyWithRepo = async (agencyData) => {
   try {
     // Create agency with repositories using the backend endpoint
-    const agencyResponse = await api.post('/owner-integration/create-agency', {
+    const agencyResponse = await api.post('/api/owner-integration/create-agency', {
       agencyName: agencyData.name,
       managerName: agencyData.managerName,
       managerEmail: agencyData.managerEmail,
