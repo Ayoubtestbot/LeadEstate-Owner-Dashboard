@@ -136,7 +136,7 @@ const Agencies = () => {
     ]
   }
 
-  const [agencies, setAgencies] = useState(getInitialAgencies)
+  const [agencies, setAgencies] = useState([]) // Start with empty array, load from API
 
   // Load agencies from API
   const loadAgencies = async () => {
@@ -181,13 +181,19 @@ const Agencies = () => {
     }
   }
 
-  // Save agencies to localStorage whenever agencies change
-  useEffect(() => {
-    localStorage.setItem('agencies', JSON.stringify(agencies))
-  }, [agencies])
+  // Remove localStorage dependency - use real API data only
+  // useEffect(() => {
+  //   localStorage.setItem('agencies', JSON.stringify(agencies))
+  // }, [agencies])
 
   // Load agencies on component mount
   useEffect(() => {
+    console.log('🔄 Component mounted, loading agencies...');
+    console.log('🔧 Environment check:', {
+      apiUrl: import.meta.env.VITE_API_URL,
+      hasApiKey: !!import.meta.env.VITE_OWNER_API_KEY,
+      mode: import.meta.env.MODE
+    });
     loadAgencies()
   }, [])
 
@@ -416,6 +422,16 @@ The manager will receive an invitation email to set up their account.`)
           </p>
         </div>
         <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              console.log('🔄 Manual reload triggered');
+              loadAgencies();
+            }}
+            className="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600"
+          >
+            🔄 Reload Data
+          </button>
           <button
             type="button"
             onClick={() => {
