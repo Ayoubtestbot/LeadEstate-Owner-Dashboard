@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { ownerAPI, handleApiError } from '../services/api'
 import AddAgencyModal from '../components/AddAgencyModal'
+import EditAgencyModal from '../components/EditAgencyModal'
 import toast from 'react-hot-toast'
 
 const Agencies = () => {
@@ -23,6 +24,8 @@ const Agencies = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [selectedAgency, setSelectedAgency] = useState(null)
   const [showActions, setShowActions] = useState(null)
 
   useEffect(() => {
@@ -108,6 +111,30 @@ const Agencies = () => {
       loadAgencies()
     }
     setShowAddModal(false)
+  }
+
+  const handleEditAgency = (agency) => {
+    setSelectedAgency(agency)
+    setShowEditModal(true)
+    setShowActions(null)
+  }
+
+  const handleAgencyUpdated = (updatedAgency) => {
+    setAgencies(prev =>
+      prev.map(agency =>
+        agency.id === updatedAgency.id ? updatedAgency : agency
+      )
+    )
+    setShowEditModal(false)
+    setSelectedAgency(null)
+  }
+
+  const handleDeleteAgency = (agency) => {
+    if (window.confirm(`Are you sure you want to delete "${agency.name}"? This action cannot be undone.`)) {
+      setAgencies(prev => prev.filter(a => a.id !== agency.id))
+      toast.success(`Agency "${agency.name}" deleted successfully`)
+      setShowActions(null)
+    }
   }
 
   const filteredAgencies = agencies.filter(agency => {
@@ -353,15 +380,24 @@ const Agencies = () => {
                         {showActions === agency.id && (
                           <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border">
                             <div className="py-1">
-                              <button className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">
+                              <button
+                                onClick={() => handleEditAgency(agency)}
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                              >
                                 <Eye className="h-4 w-4 mr-2" />
                                 View Details
                               </button>
-                              <button className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left">
+                              <button
+                                onClick={() => handleEditAgency(agency)}
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                              >
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit Agency
                               </button>
-                              <button className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left">
+                              <button
+                                onClick={() => handleDeleteAgency(agency)}
+                                className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                              >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Delete Agency
                               </button>
@@ -383,6 +419,17 @@ const Agencies = () => {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onAgencyCreated={handleAgencyCreated}
+      />
+
+      {/* Edit Agency Modal */}
+      <EditAgencyModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false)
+          setSelectedAgency(null)
+        }}
+        agency={selectedAgency}
+        onAgencyUpdated={handleAgencyUpdated}
       />
     </div>
   )
