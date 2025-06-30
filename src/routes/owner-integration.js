@@ -129,12 +129,17 @@ router.post('/create-agency', verifyOwnerRequest, async (req, res) => {
       const expiresAt = new Date(Date.now() + (48 * 60 * 60 * 1000)); // 48 hours
 
       const managerId = crypto.randomUUID();
+
+      // Generate temporary password for the manager
+      const bcrypt = require('bcryptjs');
+      const tempPassword = await bcrypt.hash('TempPassword123!', 10);
+
       await pool.query(`
         INSERT INTO users (
-          id, email, first_name, role, status, agency_id,
+          id, email, first_name, role, status, agency_id, password,
           invitation_token, invitation_sent_at, invitation_expires_at,
           agency_name, invited_by, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
       `, [
         managerId,
         managerEmail,
@@ -142,6 +147,7 @@ router.post('/create-agency', verifyOwnerRequest, async (req, res) => {
         'manager',
         'invited',
         agencyId,
+        tempPassword,
         invitationToken,
         new Date(),
         expiresAt,
@@ -190,7 +196,7 @@ router.post('/create-agency', verifyOwnerRequest, async (req, res) => {
 
       await pool.query('COMMIT');
 
-      console.log('✅ Agency created successfully:', agencyName);
+      console.log('✅ Agency created successfully with password fix:', agencyName);
 
       res.status(201).json({
         success: true,

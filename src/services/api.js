@@ -90,6 +90,7 @@ export const createAgencyWithRepo = async (agencyData) => {
       agencyName: agencyData.name,
       managerName: agencyData.managerName,
       managerEmail: agencyData.managerEmail,
+      city: agencyData.city, // ← Add city at root level for backend
       domain: agencyData.domain,
       plan: agencyData.plan || 'standard',
       companySize: agencyData.companySize || 'small',

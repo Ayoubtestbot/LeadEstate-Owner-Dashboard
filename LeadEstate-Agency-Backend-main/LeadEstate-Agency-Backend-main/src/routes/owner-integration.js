@@ -205,7 +205,7 @@ router.get('/agencies', async (req, res) => {
         a.description,
         COALESCE(u.first_name, 'Unknown') as manager_name,
         COALESCE(u.email, a.email) as manager_email,
-        (SELECT COUNT(*) FROM users WHERE agency_id = a.id AND status = 'active') as user_count
+        (SELECT COUNT(*) FROM users WHERE agency_id::text = a.id::text AND status = 'active') as user_count
       FROM agencies a
       LEFT JOIN users u ON a.manager_id = u.id
       WHERE 1=1
@@ -302,6 +302,17 @@ router.get('/agencies', async (req, res) => {
 router.post('/create-agency', async (req, res) => {
   const { agencyName, managerName, managerEmail, city, plan, description } = req.body;
 
+  // Debug: Log received data
+  console.log('🔍 Received agency creation data:', {
+    agencyName,
+    managerName,
+    managerEmail,
+    city,
+    plan,
+    description,
+    fullBody: req.body
+  });
+
   if (!agencyName || !managerName || !managerEmail) {
     return res.status(400).json({
       success: false,
@@ -339,7 +350,7 @@ router.post('/create-agency', async (req, res) => {
     // Generate UUIDs for agency and manager
     const crypto = require('crypto');
     const agencyId = crypto.randomUUID();
-    const managerId = crypto.randomUUID();
+    let managerId = crypto.randomUUID();
 
     // Insert agency into database
     const agencyResult = await pool.query(`
@@ -355,23 +366,47 @@ router.post('/create-agency', async (req, res) => {
       'active',
       JSON.stringify({ plan: plan || 'standard' }),
       description || `${agencyName} - Professional Real Estate Agency`,
-      city || 'Unknown'
+      city && city.trim() ? city.trim() : 'Not Specified'
     ]);
 
-    // Insert manager user into database
-    const managerResult = await pool.query(`
-      INSERT INTO users (
-        id, email, first_name, role, status, agency_id, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
-      RETURNING *
-    `, [
-      managerId,
-      managerEmail,
-      managerName,
-      'manager',
-      'active',
-      agencyId
-    ]);
+    // Insert manager user into database with temporary password
+    const bcrypt = require('bcryptjs');
+    const tempPassword = await bcrypt.hash('TempPassword123!', 10);
+
+    // Check if email already exists
+    const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [managerEmail]);
+
+    let managerResult;
+    if (existingUser.rows.length > 0) {
+      // Use existing user as manager
+      const existingUserId = existingUser.rows[0].id;
+      managerResult = { rows: [{ id: existingUserId }] };
+      managerId = existingUserId;
+      console.log('📧 Using existing user as manager:', managerEmail);
+    } else {
+      // Create new user
+      // Split manager name into first and last name
+      const nameParts = managerName.trim().split(' ');
+      const firstName = nameParts[0] || managerName;
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : 'Manager';
+
+      managerResult = await pool.query(`
+        INSERT INTO users (
+          id, email, first_name, last_name, role, status, agency_id, password, created_at, updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+        RETURNING *
+      `, [
+        managerId,
+        managerEmail,
+        firstName,
+        lastName,
+        'manager',
+        'invited', // Set as invited so they need to set their own password
+        agencyId,
+        tempPassword
+      ]);
+      console.log('👤 Created new manager user:', managerEmail);
+    }
 
     // Update agency with manager_id
     await pool.query(
@@ -419,6 +454,14 @@ router.post('/create-agency', async (req, res) => {
     }
 
     console.error('❌ Error creating agency in database:', error);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      detail: error.detail,
+      constraint: error.constraint,
+      table: error.table,
+      column: error.column
+    });
 
     // Fallback to demo mode on database error
     res.status(201).json({
@@ -437,7 +480,13 @@ router.post('/create-agency', async (req, res) => {
           settings: { plan: plan || 'standard' }
         },
         demoMode: true,
-        error: error.message
+        error: error.message,
+        errorDetails: {
+          code: error.code,
+          constraint: error.constraint,
+          table: error.table,
+          column: error.column
+        }
       }
     });
   }
