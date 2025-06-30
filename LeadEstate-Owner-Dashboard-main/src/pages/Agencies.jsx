@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import {
-  Building2,
-  Users,
-  Search,
-  MoreVertical,
-  Eye,
-  Edit,
-  Trash2,
+import { 
+  Building2, 
+  Users, 
+  Search, 
+  MoreVertical, 
+  Eye, 
+  Edit, 
+  Trash2, 
   Plus,
   RefreshCw,
   MapPin,
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { ownerAPI, handleApiError } from '../services/api'
 import AddAgencyModal from '../components/AddAgencyModal'
+import EditAgencyModal from '../components/EditAgencyModal'
 import toast from 'react-hot-toast'
 
 const Agencies = () => {
@@ -23,6 +24,8 @@ const Agencies = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [showAddModal, setShowAddModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [selectedAgency, setSelectedAgency] = useState(null)
   const [showActions, setShowActions] = useState(null)
 
   useEffect(() => {
@@ -70,6 +73,28 @@ const Agencies = () => {
           city: 'Chicago',
           createdAt: '2024-01-08T10:00:00Z',
           settings: { plan: 'basic' }
+        },
+        {
+          id: '4',
+          name: 'Luxury Estates',
+          managerName: 'Emma Davis',
+          email: 'emma@luxuryestates.com',
+          status: 'active',
+          userCount: 32,
+          city: 'Miami',
+          createdAt: '2024-01-05T10:00:00Z',
+          settings: { plan: 'premium' }
+        },
+        {
+          id: '5',
+          name: 'Urban Properties',
+          managerName: 'David Brown',
+          email: 'david@urbanproperties.com',
+          status: 'inactive',
+          userCount: 12,
+          city: 'Seattle',
+          createdAt: '2024-01-03T10:00:00Z',
+          settings: { plan: 'standard' }
         }
       ])
     } finally {
@@ -77,18 +102,48 @@ const Agencies = () => {
     }
   }
 
-  const handleAgencyCreated = () => {
-    loadAgencies()
+  const handleAgencyCreated = (newAgency) => {
+    // If we have demo data, add the new agency to the list
+    if (newAgency?.agency) {
+      setAgencies(prev => [newAgency.agency, ...prev])
+    } else {
+      // Otherwise refresh from backend
+      loadAgencies()
+    }
     setShowAddModal(false)
+  }
+
+  const handleEditAgency = (agency) => {
+    setSelectedAgency(agency)
+    setShowEditModal(true)
+    setShowActions(null)
+  }
+
+  const handleAgencyUpdated = (updatedAgency) => {
+    setAgencies(prev =>
+      prev.map(agency =>
+        agency.id === updatedAgency.id ? updatedAgency : agency
+      )
+    )
+    setShowEditModal(false)
+    setSelectedAgency(null)
+  }
+
+  const handleDeleteAgency = (agency) => {
+    if (window.confirm(`Are you sure you want to delete "${agency.name}"? This action cannot be undone.`)) {
+      setAgencies(prev => prev.filter(a => a.id !== agency.id))
+      toast.success(`Agency "${agency.name}" deleted successfully`)
+      setShowActions(null)
+    }
   }
 
   const filteredAgencies = agencies.filter(agency => {
     const matchesSearch = agency.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          agency.managerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          agency.email?.toLowerCase().includes(searchTerm.toLowerCase())
-
+    
     const matchesStatus = statusFilter === 'all' || agency.status === statusFilter
-
+    
     return matchesSearch && matchesStatus
   })
 
@@ -96,11 +151,12 @@ const Agencies = () => {
     const statusConfig = {
       active: { bg: 'bg-green-100', text: 'text-green-800', label: 'Active' },
       pending: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Pending' },
-      inactive: { bg: 'bg-red-100', text: 'text-red-800', label: 'Inactive' }
+      inactive: { bg: 'bg-red-100', text: 'text-red-800', label: 'Inactive' },
+      suspended: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Suspended' }
     }
-
+    
     const config = statusConfig[status] || statusConfig.pending
-
+    
     return (
       <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${config.bg} ${config.text}`}>
         {config.label}
@@ -114,9 +170,9 @@ const Agencies = () => {
       standard: { bg: 'bg-blue-100', text: 'text-blue-800' },
       premium: { bg: 'bg-purple-100', text: 'text-purple-800' }
     }
-
+    
     const config = planConfig[plan] || planConfig.basic
-
+    
     return (
       <span className={`inline-flex px-2 py-1 text-xs font-medium rounded ${config.bg} ${config.text}`}>
         {plan?.charAt(0).toUpperCase() + plan?.slice(1) || 'Basic'}
@@ -175,6 +231,80 @@ const Agencies = () => {
             <option value="active">Active</option>
             <option value="pending">Pending</option>
             <option value="inactive">Inactive</option>
+            <option value="suspended">Suspended</option>
           </select>
         </div>
       </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="flex items-center">
+            <Building2 className="h-8 w-8 text-blue-600" />
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Total Agencies</p>
+              <p className="text-2xl font-bold text-gray-900">{agencies.length}</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="flex items-center">
+            <Users className="h-8 w-8 text-green-600" />
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Active Agencies</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {agencies.filter(a => a.status === 'active').length}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="flex items-center">
+            <Users className="h-8 w-8 text-yellow-600" />
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">Total Users</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {agencies.reduce((sum, a) => sum + (a.userCount || 0), 0)}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="flex items-center">
+            <Calendar className="h-8 w-8 text-purple-600" />
+            <div className="ml-3">
+              <p className="text-sm font-medium text-gray-600">This Month</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {agencies.filter(a => {
+                  const created = new Date(a.createdAt)
+                  const now = new Date()
+                  return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear()
+                }).length}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Add Agency Modal */}
+      <AddAgencyModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onAgencyCreated={handleAgencyCreated}
+      />
+
+      {/* Edit Agency Modal */}
+      <EditAgencyModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false)
+          setSelectedAgency(null)
+        }}
+        agency={selectedAgency}
+        onAgencyUpdated={handleAgencyUpdated}
+      />
+    </div>
+  )
+}
+
+export default Agencies
