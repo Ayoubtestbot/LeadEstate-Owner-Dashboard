@@ -1,0 +1,15 @@
+{
+  "name": "leadestate-owner-dashboard-root",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "cd LeadEstate-Owner-Dashboard-main && npm run dev",
+    "build": "cd LeadEstate-Owner-Dashboard-main && npm run build",
+    "lint": "cd LeadEstate-Owner-Dashboard-main && npm run lint",
+    "preview": "cd LeadEstate-Owner-Dashboard-main && npm run preview",
+    "install-deps": "cd LeadEstate-Owner-Dashboard-main && npm install"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
