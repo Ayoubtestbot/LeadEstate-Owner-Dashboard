@@ -137,30 +137,6 @@ const Agencies = () => {
     }
   }
 
-  const handleEditAgency = (agency) => {
-    setSelectedAgency(agency)
-    setShowEditModal(true)
-    setShowActions(null)
-  }
-
-  const handleAgencyUpdated = (updatedAgency) => {
-    setAgencies(prev =>
-      prev.map(agency =>
-        agency.id === updatedAgency.id ? updatedAgency : agency
-      )
-    )
-    setShowEditModal(false)
-    setSelectedAgency(null)
-  }
-
-  const handleDeleteAgency = (agency) => {
-    if (window.confirm(`Are you sure you want to delete "${agency.name}"? This action cannot be undone.`)) {
-      setAgencies(prev => prev.filter(a => a.id !== agency.id))
-      toast.success(`Agency "${agency.name}" deleted successfully`)
-      setShowActions(null)
-    }
-  }
-
   const filteredAgencies = agencies.filter(agency => {
     const matchesSearch = agency.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          agency.managerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
