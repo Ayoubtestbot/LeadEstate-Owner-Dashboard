@@ -137,6 +137,30 @@ const Agencies = () => {
     }
   }
 
+  const handleEditAgency = (agency) => {
+    setSelectedAgency(agency)
+    setShowEditModal(true)
+    setShowActions(null)
+  }
+
+  const handleAgencyUpdated = (updatedAgency) => {
+    setAgencies(prev =>
+      prev.map(agency =>
+        agency.id === updatedAgency.id ? updatedAgency : agency
+      )
+    )
+    setShowEditModal(false)
+    setSelectedAgency(null)
+  }
+
+  const handleDeleteAgency = (agency) => {
+    if (window.confirm(`Are you sure you want to delete "${agency.name}"? This action cannot be undone.`)) {
+      setAgencies(prev => prev.filter(a => a.id !== agency.id))
+      toast.success(`Agency "${agency.name}" deleted successfully`)
+      setShowActions(null)
+    }
+  }
+
   const filteredAgencies = agencies.filter(agency => {
     const matchesSearch = agency.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          agency.managerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -283,6 +307,134 @@ const Agencies = () => {
               </p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Agencies Table */}
+      <div className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Agency
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Manager
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Plan
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Users
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Created
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {loading ? (
+                <tr>
+                  <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
+                    <div className="flex items-center justify-center">
+                      <RefreshCw className="h-5 w-5 animate-spin mr-2" />
+                      Loading agencies...
+                    </div>
+                  </td>
+                </tr>
+              ) : filteredAgencies.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-6 py-8 text-center text-gray-500">
+                    No agencies found. Create your first agency to get started.
+                  </td>
+                </tr>
+              ) : (
+                filteredAgencies.map((agency) => (
+                  <tr key={agency.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10">
+                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                            <Building2 className="h-5 w-5 text-blue-600" />
+                          </div>
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{agency.name}</div>
+                          <div className="text-sm text-gray-500 flex items-center">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            {agency.city || 'Unknown'}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{agency.managerName || 'Unknown'}</div>
+                      <div className="text-sm text-gray-500 flex items-center">
+                        <Mail className="h-3 w-3 mr-1" />
+                        {agency.email}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {getStatusBadge(agency.status)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {getPlanBadge(agency.settings?.plan)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {agency.userCount || 0}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(agency.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowActions(showActions === agency.id ? null : agency.id)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+                        {showActions === agency.id && (
+                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-10 border">
+                            <div className="py-1">
+                              <button
+                                onClick={() => handleEditAgency(agency)}
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                              >
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Details
+                              </button>
+                              <button
+                                onClick={() => handleEditAgency(agency)}
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                              >
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit Agency
+                              </button>
+                              <button
+                                onClick={() => handleDeleteAgency(agency)}
+                                className="flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete Agency
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
