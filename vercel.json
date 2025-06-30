@@ -1,8 +1,8 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
+  "buildCommand": "cd LeadEstate-Owner-Dashboard-main && npm run build",
+  "outputDirectory": "LeadEstate-Owner-Dashboard-main/dist",
+  "installCommand": "cd LeadEstate-Owner-Dashboard-main && npm install",
+  "devCommand": "cd LeadEstate-Owner-Dashboard-main && npm run dev",
   "rewrites": [
     {
       "source": "/(.*)",
