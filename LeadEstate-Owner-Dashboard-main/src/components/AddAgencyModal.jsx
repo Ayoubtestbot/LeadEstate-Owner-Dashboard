@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { X, Building2, User, Mail, Phone, MapPin, Loader } from 'lucide-react'
+import { X, Building2, User, Mail, Phone, MapPin, Loader, CreditCard, DollarSign } from 'lucide-react'
 import { createAgencyWithRepo, handleApiError } from '../services/api'
 import toast from 'react-hot-toast'
 
@@ -17,6 +17,15 @@ const AddAgencyModal = ({ isOpen, onClose, onAgencyCreated }) => {
     maxUsers: 50,
     maxLeads: 1000,
     maxProperties: 500,
+    // Billing Information
+    plan: 'standard',
+    billingCycle: 'monthly',
+    customPrice: '',
+    paymentMethod: 'credit_card',
+    billingEmail: '',
+    billingAddress: '',
+    taxId: '',
+    notes: ''
   })
 
   const handleInputChange = (e) => {
@@ -33,8 +42,14 @@ const AddAgencyModal = ({ isOpen, onClose, onAgencyCreated }) => {
 
     try {
       // Validate required fields
-      if (!formData.name || !formData.managerName || !formData.managerEmail) {
+      if (!formData.name || !formData.managerName || !formData.managerEmail || !formData.plan) {
         toast.error('Please fill in all required fields')
+        return
+      }
+
+      // Validate custom price if custom plan selected
+      if (formData.plan === 'custom' && (!formData.customPrice || formData.customPrice <= 0)) {
+        toast.error('Please enter a valid custom price')
         return
       }
 
@@ -171,6 +186,152 @@ const AddAgencyModal = ({ isOpen, onClose, onAgencyCreated }) => {
                   required
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Billing Information */}
+          <div>
+            <h4 className="text-md font-medium text-gray-900 mb-4 flex items-center">
+              <CreditCard className="h-5 w-5 mr-2 text-blue-600" />
+              Billing & Plan Information
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Plan Selection */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Subscription Plan *
+                </label>
+                <select
+                  name="plan"
+                  value={formData.plan}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  required
+                >
+                  <option value="basic">Basic - $49/month (Up to 10 users)</option>
+                  <option value="standard">Standard - $99/month (Up to 50 users)</option>
+                  <option value="premium">Premium - $199/month (Up to 100 users)</option>
+                  <option value="enterprise">Enterprise - $399/month (Unlimited users)</option>
+                  <option value="custom">Custom Plan</option>
+                </select>
+              </div>
+
+              {/* Billing Cycle */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Billing Cycle
+                </label>
+                <select
+                  name="billingCycle"
+                  value={formData.billingCycle}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly (5% discount)</option>
+                  <option value="yearly">Yearly (10% discount)</option>
+                </select>
+              </div>
+
+              {/* Custom Price (only show if custom plan selected) */}
+              {formData.plan === 'custom' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Custom Price (per month)
+                  </label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="number"
+                      name="customPrice"
+                      value={formData.customPrice}
+                      onChange={handleInputChange}
+                      className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="299"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Payment Method */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Payment Method
+                </label>
+                <select
+                  name="paymentMethod"
+                  value={formData.paymentMethod}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="credit_card">Credit Card</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="paypal">PayPal</option>
+                  <option value="invoice">Invoice (Net 30)</option>
+                </select>
+              </div>
+
+              {/* Billing Email */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Billing Email
+                </label>
+                <input
+                  type="email"
+                  name="billingEmail"
+                  value={formData.billingEmail}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="billing@agency.com"
+                />
+              </div>
+
+              {/* Tax ID */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tax ID / VAT Number
+                </label>
+                <input
+                  type="text"
+                  name="taxId"
+                  value={formData.taxId}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="US123456789"
+                />
+              </div>
+            </div>
+
+            {/* Billing Address */}
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Billing Address
+              </label>
+              <textarea
+                name="billingAddress"
+                value={formData.billingAddress}
+                onChange={handleInputChange}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                placeholder="123 Business St, Suite 100, City, State 12345"
+              />
+            </div>
+
+            {/* Notes */}
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Billing Notes
+              </label>
+              <textarea
+                name="notes"
+                value={formData.notes}
+                onChange={handleInputChange}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Special billing instructions or notes..."
+              />
             </div>
           </div>
 

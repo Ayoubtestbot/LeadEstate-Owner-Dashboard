@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react'
-import { 
-  Building2, 
-  Users, 
-  Search, 
-  MoreVertical, 
-  Eye, 
-  Edit, 
-  Trash2, 
+import {
+  Building2,
+  Users,
+  Search,
+  MoreVertical,
+  Eye,
+  Edit,
+  Trash2,
   Plus,
   RefreshCw,
   MapPin,
   Mail,
-  Calendar
+  Calendar,
+  CreditCard
 } from 'lucide-react'
 import { ownerAPI, handleApiError } from '../services/api'
 import AddAgencyModal from '../components/AddAgencyModal'
@@ -25,6 +26,7 @@ const Agencies = () => {
   const [statusFilter, setStatusFilter] = useState('all')
   const [showAddModal, setShowAddModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showBillingModal, setShowBillingModal] = useState(false)
   const [selectedAgency, setSelectedAgency] = useState(null)
   const [showActions, setShowActions] = useState(null)
 
@@ -61,6 +63,12 @@ const Agencies = () => {
   const handleEditAgency = (agency) => {
     setSelectedAgency(agency)
     setShowEditModal(true)
+    setShowActions(null)
+  }
+
+  const handleViewBilling = (agency) => {
+    setSelectedAgency(agency)
+    setShowBillingModal(true)
     setShowActions(null)
   }
 
@@ -247,7 +255,7 @@ const Agencies = () => {
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Plan
+                  Plan & Billing
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Users
@@ -306,7 +314,21 @@ const Agencies = () => {
                       {getStatusBadge(agency.status)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {getPlanBadge(agency.settings?.plan)}
+                      <div className="space-y-1">
+                        {getPlanBadge(agency.settings?.plan)}
+                        <div className="text-xs text-gray-500">
+                          ${agency.settings?.monthlyPrice || '99'}/{agency.settings?.billingCycle || 'month'}
+                        </div>
+                        {agency.settings?.billingStatus && (
+                          <div className={`text-xs px-2 py-1 rounded-full inline-block ${
+                            agency.settings.billingStatus === 'active'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {agency.settings.billingStatus}
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {agency.userCount || 0}
@@ -338,6 +360,13 @@ const Agencies = () => {
                               >
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit Agency
+                              </button>
+                              <button
+                                onClick={() => handleViewBilling(agency)}
+                                className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left"
+                              >
+                                <CreditCard className="h-4 w-4 mr-2" />
+                                View Billing
                               </button>
                               <button
                                 onClick={() => handleDeleteAgency(agency)}
@@ -376,6 +405,124 @@ const Agencies = () => {
         agency={selectedAgency}
         onAgencyUpdated={handleAgencyUpdated}
       />
+
+      {/* Billing Modal */}
+      {showBillingModal && selectedAgency && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div className="flex items-center">
+                <CreditCard className="h-6 w-6 text-blue-600 mr-3" />
+                <h3 className="text-lg font-medium text-gray-900">
+                  Billing Information - {selectedAgency.name}
+                </h3>
+              </div>
+              <button
+                onClick={() => {
+                  setShowBillingModal(false)
+                  setSelectedAgency(null)
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              {/* Plan Information */}
+              <div>
+                <h4 className="text-md font-medium text-gray-900 mb-4">Plan Details</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm font-medium text-gray-600">Current Plan</p>
+                    <p className="text-lg font-bold text-gray-900 capitalize">
+                      {selectedAgency.settings?.plan || 'Standard'}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm font-medium text-gray-600">Monthly Price</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      ${selectedAgency.settings?.monthlyPrice || '99'}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm font-medium text-gray-600">Billing Cycle</p>
+                    <p className="text-lg font-bold text-gray-900 capitalize">
+                      {selectedAgency.settings?.billingCycle || 'Monthly'}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <p className="text-sm font-medium text-gray-600">Status</p>
+                    <p className={`text-lg font-bold capitalize ${
+                      selectedAgency.settings?.billingStatus === 'active'
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                    }`}>
+                      {selectedAgency.settings?.billingStatus || 'Active'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Billing Information */}
+              <div>
+                <h4 className="text-md font-medium text-gray-900 mb-4">Billing Details</h4>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Billing Email</p>
+                    <p className="text-gray-900">{selectedAgency.settings?.billingEmail || selectedAgency.email}</p>
+                  </div>
+                  {selectedAgency.settings?.billingAddress && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Billing Address</p>
+                      <p className="text-gray-900">{selectedAgency.settings.billingAddress}</p>
+                    </div>
+                  )}
+                  {selectedAgency.settings?.taxId && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Tax ID</p>
+                      <p className="text-gray-900">{selectedAgency.settings.taxId}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Payment Method</p>
+                    <p className="text-gray-900 capitalize">{selectedAgency.settings?.paymentMethod || 'Credit Card'}</p>
+                  </div>
+                  {selectedAgency.settings?.nextBillingDate && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Next Billing Date</p>
+                      <p className="text-gray-900">
+                        {new Date(selectedAgency.settings.nextBillingDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                  )}
+                  {selectedAgency.settings?.notes && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Notes</p>
+                      <p className="text-gray-900">{selectedAgency.settings.notes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex justify-end p-6 border-t border-gray-200">
+              <button
+                onClick={() => {
+                  setShowBillingModal(false)
+                  setSelectedAgency(null)
+                }}
+                className="bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

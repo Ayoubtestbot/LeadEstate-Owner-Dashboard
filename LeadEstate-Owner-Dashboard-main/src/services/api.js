@@ -119,6 +119,15 @@ export const createAgencyWithRepo = async (agencyData) => {
       domain: agencyData.domain,
       plan: agencyData.plan || 'standard',
       companySize: agencyData.companySize || 'small',
+      description: agencyData.description,
+      // Billing information
+      billingCycle: agencyData.billingCycle || 'monthly',
+      customPrice: agencyData.customPrice,
+      paymentMethod: agencyData.paymentMethod || 'credit_card',
+      billingEmail: agencyData.billingEmail,
+      billingAddress: agencyData.billingAddress,
+      taxId: agencyData.taxId,
+      notes: agencyData.notes,
       customBranding: {
         primaryColor: '#3B82F6',
         logo: agencyData.logo || null
