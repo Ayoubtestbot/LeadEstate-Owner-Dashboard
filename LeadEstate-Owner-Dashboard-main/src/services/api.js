@@ -101,6 +101,9 @@ export const ownerAPI = {
   }),
   getSupportTickets: () => api.get('/api/owner-integration/support/tickets', {
     headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
+  }),
+  getFAQs: () => api.get('/api/owner-integration/support/faqs', {
+    headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
   })
 }
 

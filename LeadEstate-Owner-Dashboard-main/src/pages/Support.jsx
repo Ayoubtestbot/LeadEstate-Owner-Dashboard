@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   HelpCircle,
   MessageCircle,
@@ -19,6 +19,8 @@ const Support = () => {
   const [activeTab, setActiveTab] = useState('faq')
   const [searchTerm, setSearchTerm] = useState('')
   const [expandedFaq, setExpandedFaq] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [faqs, setFaqs] = useState([])
   const [ticketForm, setTicketForm] = useState({
     subject: '',
     priority: 'medium',
@@ -26,33 +28,60 @@ const Support = () => {
     message: ''
   })
 
-  const faqs = [
-    {
-      id: 1,
-      question: 'How do I add a new agency?',
-      answer: 'To add a new agency, go to the Agencies page and click the "Add Agency" button. Fill in the required information including agency name, manager details, and city.'
-    },
-    {
-      id: 2,
-      question: 'How can I edit agency information?',
-      answer: 'You can edit agency information by clicking the three dots menu next to any agency in the table and selecting "Edit Agency". This will open a modal where you can update the details.'
-    },
-    {
-      id: 3,
-      question: 'What are the different subscription plans?',
-      answer: 'We offer three plans: Basic (up to 10 users), Standard (up to 50 users), and Premium (unlimited users). Each plan includes different features and limits.'
-    },
-    {
-      id: 4,
-      question: 'How do I reset an agency manager\'s password?',
-      answer: 'Agency managers can reset their passwords through the login page. As an owner, you can also generate new credentials for managers through the agency edit modal.'
-    },
-    {
-      id: 5,
-      question: 'Can I export agency data?',
-      answer: 'Yes, you can export agency data from the Analytics page using the Export button. Data can be exported in CSV or PDF format.'
+  useEffect(() => {
+    loadSupportData()
+  }, [])
+
+  const loadSupportData = async () => {
+    try {
+      setLoading(true)
+
+      // Try to load FAQs from backend
+      let loadedFaqs = []
+      try {
+        const response = await ownerAPI.getFAQs()
+        loadedFaqs = response.data.data || response.data || []
+      } catch (error) {
+        console.warn('FAQ endpoint not available, using default FAQs:', error.message)
+        // Fallback to default FAQs if backend not ready
+        loadedFaqs = [
+          {
+            id: 1,
+            question: 'How do I add a new agency?',
+            answer: 'To add a new agency, go to the Agencies page and click the "Add Agency" button. Fill in the required information including agency name, manager details, and city.'
+          },
+          {
+            id: 2,
+            question: 'How can I edit agency information?',
+            answer: 'You can edit agency information by clicking the three dots menu next to any agency in the table and selecting "Edit Agency". This will open a modal where you can update the details.'
+          },
+          {
+            id: 3,
+            question: 'What are the different subscription plans?',
+            answer: 'We offer three plans: Basic (up to 10 users), Standard (up to 50 users), and Premium (unlimited users). Each plan includes different features and limits.'
+          },
+          {
+            id: 4,
+            question: 'How do I reset an agency manager\'s password?',
+            answer: 'Agency managers can reset their passwords through the login page. As an owner, you can also generate new credentials for managers through the agency edit modal.'
+          },
+          {
+            id: 5,
+            question: 'Can I export agency data?',
+            answer: 'Yes, you can export agency data from the Analytics page using the Export button. Data can be exported in CSV or PDF format.'
+          }
+        ]
+      }
+
+      setFaqs(loadedFaqs)
+      console.log('✅ Support data loaded from database')
+    } catch (error) {
+      console.error('❌ Failed to load support data:', error.message)
+      toast.error(`Failed to load support data: ${handleApiError(error)}`)
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
 
   const tickets = [
     {
