@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { ownerAPI, handleApiError } from '../services/api'
 import toast from 'react-hot-toast'
+import PageTest from '../components/PageTest'
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -80,6 +81,9 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* Test Component */}
+      <PageTest pageName="Dashboard" />
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
