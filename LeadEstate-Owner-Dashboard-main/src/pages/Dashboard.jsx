@@ -12,7 +12,6 @@ import {
 } from 'lucide-react'
 import { ownerAPI, handleApiError } from '../services/api'
 import toast from 'react-hot-toast'
-import PageTest from '../components/PageTest'
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -81,9 +80,6 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      {/* Test Component */}
-      <PageTest pageName="Dashboard" />
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -150,10 +146,36 @@ const Dashboard = () => {
             <BarChart3 className="h-5 w-5 text-blue-600 mr-2" />
             <h3 className="text-lg font-medium text-gray-900">Agency Growth</h3>
           </div>
-          <div className="h-64 flex items-center justify-center text-gray-500">
-            <div className="text-center">
-              <BarChart3 className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-              <p>Agency growth chart will be displayed here</p>
+          <div className="p-4">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Growth This Month</span>
+                <span className="text-lg font-semibold text-green-600">+{stats.newAgenciesThisMonth}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div
+                  className="bg-blue-600 h-3 rounded-full transition-all duration-500"
+                  style={{ width: `${Math.min((stats.newAgenciesThisMonth / 5) * 100, 100)}%` }}
+                ></div>
+              </div>
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>0</span>
+                <span>Target: 5 agencies</span>
+              </div>
+              <div className="grid grid-cols-3 gap-4 mt-6">
+                <div className="text-center p-3 bg-blue-50 rounded-lg">
+                  <div className="text-xl font-bold text-blue-600">{stats.totalAgencies}</div>
+                  <div className="text-xs text-gray-600">Total Agencies</div>
+                </div>
+                <div className="text-center p-3 bg-green-50 rounded-lg">
+                  <div className="text-xl font-bold text-green-600">{stats.activeAgencies}</div>
+                  <div className="text-xs text-gray-600">Active</div>
+                </div>
+                <div className="text-center p-3 bg-yellow-50 rounded-lg">
+                  <div className="text-xl font-bold text-yellow-600">{stats.totalAgencies - stats.activeAgencies}</div>
+                  <div className="text-xs text-gray-600">Pending</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -163,10 +185,46 @@ const Dashboard = () => {
             <PieChart className="h-5 w-5 text-green-600 mr-2" />
             <h3 className="text-lg font-medium text-gray-900">Agency Status Distribution</h3>
           </div>
-          <div className="h-64 flex items-center justify-center text-gray-500">
-            <div className="text-center">
-              <PieChart className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-              <p>Status distribution chart will be displayed here</p>
+          <div className="p-4">
+            <div className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+                    <span className="text-sm text-gray-600">Active</span>
+                  </div>
+                  <span className="text-sm font-medium">{stats.activeAgencies}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 bg-yellow-500 rounded-full mr-2"></div>
+                    <span className="text-sm text-gray-600">Pending</span>
+                  </div>
+                  <span className="text-sm font-medium">{stats.totalAgencies - stats.activeAgencies}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="w-3 h-3 bg-gray-500 rounded-full mr-2"></div>
+                    <span className="text-sm text-gray-600">Inactive</span>
+                  </div>
+                  <span className="text-sm font-medium">0</span>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-900">
+                    {stats.totalAgencies > 0 ? Math.round((stats.activeAgencies / stats.totalAgencies) * 100) : 0}%
+                  </div>
+                  <div className="text-sm text-gray-500">Active Rate</div>
+                </div>
+                <div className="mt-4 w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-green-500 h-2 rounded-full transition-all duration-500"
+                    style={{ width: `${stats.totalAgencies > 0 ? (stats.activeAgencies / stats.totalAgencies) * 100 : 0}%` }}
+                  ></div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
