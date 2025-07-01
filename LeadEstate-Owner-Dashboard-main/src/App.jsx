@@ -21,7 +21,7 @@ function App() {
           <Header setSidebarOpen={setSidebarOpen} />
 
           <main className="flex-1 py-4 sm:py-6">
-            <div className="mx-auto max-w-7xl px-2 sm:px-4 lg:px-8">
+            <div className="w-full px-2 sm:px-4 lg:px-8">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/agencies" element={<Agencies />} />

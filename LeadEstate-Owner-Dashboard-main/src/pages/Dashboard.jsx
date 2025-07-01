@@ -17,39 +17,7 @@ const Dashboard = () => {
   // Simple test version to check if component renders
   console.log('🎯 Dashboard component rendering...')
 
-  // Test if the issue is with API calls
-  const [testMode, setTestMode] = useState(true)
-
-  if (testMode) {
-    return (
-      <div className="space-y-6">
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          <strong>🎯 DASHBOARD TEST MODE ACTIVE</strong>
-          <br />
-          <span>If you see this, React components are working!</span>
-          <br />
-          <button
-            onClick={() => setTestMode(false)}
-            className="mt-2 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-          >
-            Load Full Dashboard
-          </button>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-lg shadow">
-            <div className="flex items-center">
-              <Building2 className="h-8 w-8 text-blue-600" />
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Test Card</p>
-                <p className="text-2xl font-bold text-gray-900">Working!</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  // Now we know React works, load the full dashboard
   const [stats, setStats] = useState({
     totalAgencies: 0,
     activeAgencies: 0,
