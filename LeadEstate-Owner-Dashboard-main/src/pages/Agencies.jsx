@@ -36,67 +36,12 @@ const Agencies = () => {
     try {
       setLoading(true)
       const response = await ownerAPI.getAgencies()
-      setAgencies(response.data.data || [])
+      console.log('✅ Agencies loaded from database:', response.data)
+      setAgencies(response.data.data || response.data || [])
     } catch (error) {
-      console.warn('Agencies endpoint not available, using demo data:', error.message)
-      // Demo data fallback
-      setAgencies([
-        {
-          id: '1',
-          name: 'Elite Properties',
-          managerName: 'John Smith',
-          email: 'john@eliteproperties.com',
-          status: 'active',
-          userCount: 25,
-          city: 'New York',
-          createdAt: '2024-01-15T10:00:00Z',
-          settings: { plan: 'premium' }
-        },
-        {
-          id: '2',
-          name: 'Prime Real Estate',
-          managerName: 'Sarah Johnson',
-          email: 'sarah@primerealestate.com',
-          status: 'active',
-          userCount: 18,
-          city: 'Los Angeles',
-          createdAt: '2024-01-10T10:00:00Z',
-          settings: { plan: 'standard' }
-        },
-        {
-          id: '3',
-          name: 'Metro Homes',
-          managerName: 'Mike Wilson',
-          email: 'mike@metrohomes.com',
-          status: 'pending',
-          userCount: 0,
-          city: 'Chicago',
-          createdAt: '2024-01-08T10:00:00Z',
-          settings: { plan: 'basic' }
-        },
-        {
-          id: '4',
-          name: 'Luxury Estates',
-          managerName: 'Emma Davis',
-          email: 'emma@luxuryestates.com',
-          status: 'active',
-          userCount: 32,
-          city: 'Miami',
-          createdAt: '2024-01-05T10:00:00Z',
-          settings: { plan: 'premium' }
-        },
-        {
-          id: '5',
-          name: 'Urban Properties',
-          managerName: 'David Brown',
-          email: 'david@urbanproperties.com',
-          status: 'inactive',
-          userCount: 12,
-          city: 'Seattle',
-          createdAt: '2024-01-03T10:00:00Z',
-          settings: { plan: 'standard' }
-        }
-      ])
+      console.error('❌ Failed to load agencies from database:', error.message)
+      toast.error(`Failed to load agencies: ${handleApiError(error)}`)
+      setAgencies([]) // Empty array instead of mock data
     } finally {
       setLoading(false)
     }

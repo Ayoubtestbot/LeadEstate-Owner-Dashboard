@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   BarChart3,
   PieChart,
@@ -9,14 +9,78 @@ import {
   RefreshCw,
   Download
 } from 'lucide-react'
+import { ownerAPI, handleApiError } from '../services/api'
+import toast from 'react-hot-toast'
 
 const Analytics = () => {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [timeRange, setTimeRange] = useState('30d')
+  const [agencies, setAgencies] = useState([])
+  const [analytics, setAnalytics] = useState({
+    totalAgencies: 0,
+    totalUsers: 0,
+    activeRate: 0,
+    growthRate: 0,
+    newThisMonth: 0,
+    newThisWeek: 0
+  })
+
+  useEffect(() => {
+    loadAnalytics()
+  }, [timeRange])
+
+  const loadAnalytics = async () => {
+    try {
+      setLoading(true)
+      const response = await ownerAPI.getAgencies()
+      const agenciesData = response.data.data || response.data || []
+      setAgencies(agenciesData)
+
+      // Calculate analytics from real data
+      const totalAgencies = agenciesData.length
+      const totalUsers = agenciesData.reduce((sum, a) => sum + (a.userCount || 0), 0)
+      const activeAgencies = agenciesData.filter(a => a.status === 'active').length
+      const activeRate = totalAgencies > 0 ? Math.round((activeAgencies / totalAgencies) * 100) : 0
+
+      // Calculate growth metrics
+      const now = new Date()
+      const thisMonth = agenciesData.filter(a => {
+        const created = new Date(a.createdAt)
+        return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear()
+      }).length
+
+      const lastMonth = agenciesData.filter(a => {
+        const created = new Date(a.createdAt)
+        const lastMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        return created.getMonth() === lastMonthDate.getMonth() && created.getFullYear() === lastMonthDate.getFullYear()
+      }).length
+
+      const growthRate = lastMonth > 0 ? Math.round(((thisMonth - lastMonth) / lastMonth) * 100) : 0
+
+      setAnalytics({
+        totalAgencies,
+        totalUsers,
+        activeRate,
+        growthRate,
+        newThisMonth: thisMonth,
+        newThisWeek: agenciesData.filter(a => {
+          const created = new Date(a.createdAt)
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          return created >= weekAgo
+        }).length
+      })
+
+      console.log('✅ Analytics loaded from database')
+    } catch (error) {
+      console.error('❌ Failed to load analytics:', error.message)
+      toast.error(`Failed to load analytics: ${handleApiError(error)}`)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleRefresh = () => {
-    setLoading(true)
-    setTimeout(() => setLoading(false), 1000)
+    loadAnalytics()
   }
 
   return (
@@ -60,8 +124,10 @@ const Analytics = () => {
             <Building2 className="h-8 w-8 text-blue-600" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Agencies</p>
-              <p className="text-2xl font-bold text-gray-900">5</p>
-              <p className="text-xs text-green-600">+2 this month</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {loading ? '...' : analytics.totalAgencies}
+              </p>
+              <p className="text-xs text-green-600">+{analytics.newThisMonth} this month</p>
             </div>
           </div>
         </div>
@@ -71,8 +137,10 @@ const Analytics = () => {
             <Users className="h-8 w-8 text-green-600" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Total Users</p>
-              <p className="text-2xl font-bold text-gray-900">87</p>
-              <p className="text-xs text-green-600">+12 this month</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {loading ? '...' : analytics.totalUsers}
+              </p>
+              <p className="text-xs text-green-600">+{analytics.newThisWeek} this week</p>
             </div>
           </div>
         </div>
@@ -82,8 +150,10 @@ const Analytics = () => {
             <Activity className="h-8 w-8 text-purple-600" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Active Rate</p>
-              <p className="text-2xl font-bold text-gray-900">94%</p>
-              <p className="text-xs text-green-600">+5% this month</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {loading ? '...' : `${analytics.activeRate}%`}
+              </p>
+              <p className="text-xs text-green-600">of all agencies</p>
             </div>
           </div>
         </div>
@@ -93,7 +163,9 @@ const Analytics = () => {
             <TrendingUp className="h-8 w-8 text-yellow-600" />
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Growth Rate</p>
-              <p className="text-2xl font-bold text-gray-900">+23%</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {loading ? '...' : `${analytics.growthRate >= 0 ? '+' : ''}${analytics.growthRate}%`}
+              </p>
               <p className="text-xs text-green-600">vs last month</p>
             </div>
           </div>
@@ -158,40 +230,54 @@ const Analytics = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              <tr>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  Elite Properties
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">25</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-purple-100 text-purple-800">
-                    Premium
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                    Active
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Excellent</td>
-              </tr>
-              <tr>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                  Prime Real Estate
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">18</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="inline-flex px-2 py-1 text-xs font-medium rounded bg-blue-100 text-blue-800">
-                    Standard
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                    Active
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Good</td>
-              </tr>
+              {loading ? (
+                <tr>
+                  <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                    <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2" />
+                    Loading analytics data...
+                  </td>
+                </tr>
+              ) : agencies.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="px-6 py-8 text-center text-gray-500">
+                    No agencies found. Create your first agency to see analytics.
+                  </td>
+                </tr>
+              ) : (
+                agencies.map((agency) => (
+                  <tr key={agency.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {agency.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {agency.userCount || 0}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded ${
+                        agency.settings?.plan === 'premium' ? 'bg-purple-100 text-purple-800' :
+                        agency.settings?.plan === 'standard' ? 'bg-blue-100 text-blue-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {agency.settings?.plan?.charAt(0).toUpperCase() + agency.settings?.plan?.slice(1) || 'Basic'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        agency.status === 'active' ? 'bg-green-100 text-green-800' :
+                        agency.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {agency.status?.charAt(0).toUpperCase() + agency.status?.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {agency.userCount > 20 ? 'Excellent' :
+                       agency.userCount > 10 ? 'Good' :
+                       agency.userCount > 0 ? 'Fair' : 'New'}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
