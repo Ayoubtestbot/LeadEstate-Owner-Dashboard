@@ -12,6 +12,7 @@ import {
   Clock,
   CheckCircle
 } from 'lucide-react'
+import { ownerAPI, handleApiError } from '../services/api'
 import toast from 'react-hot-toast'
 
 const Support = () => {
@@ -77,10 +78,29 @@ const Support = () => {
     faq.answer.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const handleTicketSubmit = (e) => {
+  const handleTicketSubmit = async (e) => {
     e.preventDefault()
-    toast.success('Support ticket submitted successfully!')
-    setTicketForm({ subject: '', priority: 'medium', category: 'general', message: '' })
+
+    if (!ticketForm.subject.trim() || !ticketForm.message.trim()) {
+      toast.error('Please fill in all required fields')
+      return
+    }
+
+    try {
+      const ticketData = {
+        ...ticketForm,
+        submittedAt: new Date().toISOString(),
+        status: 'open'
+      }
+
+      await ownerAPI.submitSupportTicket(ticketData)
+      toast.success('Support ticket submitted successfully!')
+      setTicketForm({ subject: '', priority: 'medium', category: 'general', message: '' })
+      console.log('✅ Support ticket saved to database')
+    } catch (error) {
+      console.error('❌ Failed to submit support ticket:', error.message)
+      toast.error(`Failed to submit ticket: ${handleApiError(error)}`)
+    }
   }
 
   const getStatusIcon = (status) => {
@@ -130,7 +150,13 @@ const Support = () => {
           <MessageCircle className="h-8 w-8 text-green-600 mx-auto mb-3" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Live Chat</h3>
           <p className="text-gray-600 mb-3">Chat with our team</p>
-          <button className="text-green-600 hover:text-green-700">
+          <button
+            onClick={() => {
+              toast.success('Live chat feature coming soon! Please use email support for now.')
+              // In production, this would integrate with a chat service like Intercom, Zendesk, etc.
+            }}
+            className="text-green-600 hover:text-green-700"
+          >
             Start Chat
           </button>
         </div>

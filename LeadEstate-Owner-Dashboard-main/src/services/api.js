@@ -85,6 +85,22 @@ export const ownerAPI = {
   // System health
   getSystemHealth: () => api.get('/api/owner-integration/system/health', {
     headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
+  }),
+
+  // Settings management
+  getSettings: () => api.get('/api/owner-integration/settings', {
+    headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
+  }),
+  updateSettings: (data) => api.put('/api/owner-integration/settings', data, {
+    headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
+  }),
+
+  // Support management
+  submitSupportTicket: (data) => api.post('/api/owner-integration/support/tickets', data, {
+    headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
+  }),
+  getSupportTickets: () => api.get('/api/owner-integration/support/tickets', {
+    headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
   })
 }
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Settings as SettingsIcon,
   User,
@@ -11,11 +11,13 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react'
+import { ownerAPI, handleApiError } from '../services/api'
 import toast from 'react-hot-toast'
 
 const Settings = () => {
   const [activeTab, setActiveTab] = useState('general')
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
 
   const [settings, setSettings] = useState({
@@ -43,6 +45,26 @@ const Settings = () => {
     rateLimitPerHour: 1000
   })
 
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  const loadSettings = async () => {
+    try {
+      setLoading(true)
+      const response = await ownerAPI.getSettings()
+      const serverSettings = response.data.data || response.data
+      if (serverSettings) {
+        setSettings(prev => ({ ...prev, ...serverSettings }))
+      }
+    } catch (error) {
+      console.warn('Settings endpoint not available, using default settings:', error.message)
+      // Keep default settings if backend not ready
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleInputChange = (field, value) => {
     setSettings(prev => ({
       ...prev,
@@ -51,15 +73,16 @@ const Settings = () => {
   }
 
   const handleSave = async () => {
-    setLoading(true)
+    setSaving(true)
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await ownerAPI.updateSettings(settings)
       toast.success('Settings saved successfully!')
+      console.log('✅ Settings saved to database')
     } catch (error) {
-      toast.error('Failed to save settings')
+      console.error('❌ Failed to save settings:', error.message)
+      toast.error(`Failed to save settings: ${handleApiError(error)}`)
     } finally {
-      setLoading(false)
+      setSaving(false)
     }
   }
 
@@ -300,11 +323,11 @@ const Settings = () => {
               <div className="pt-6 border-t border-gray-200">
                 <button
                   onClick={handleSave}
-                  disabled={loading}
+                  disabled={saving || loading}
                   className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
                 >
                   <Save className="h-4 w-4 mr-2" />
-                  {loading ? 'Saving...' : 'Save Changes'}
+                  {saving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </div>

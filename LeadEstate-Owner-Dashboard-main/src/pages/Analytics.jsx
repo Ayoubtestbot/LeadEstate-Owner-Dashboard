@@ -83,6 +83,58 @@ const Analytics = () => {
     loadAnalytics()
   }
 
+  const handleExport = async () => {
+    try {
+      toast.loading('Preparing analytics export...')
+
+      // Prepare export data
+      const exportData = {
+        generatedAt: new Date().toISOString(),
+        timeRange,
+        summary: analytics,
+        agencies: agencies.map(agency => ({
+          name: agency.name,
+          status: agency.status,
+          city: agency.city,
+          userCount: agency.userCount || 0,
+          createdAt: agency.createdAt,
+          plan: agency.plan || 'Standard'
+        }))
+      }
+
+      // Create CSV content
+      const csvContent = [
+        ['Agency Name', 'Status', 'City', 'Users', 'Plan', 'Created Date'],
+        ...agencies.map(agency => [
+          agency.name,
+          agency.status,
+          agency.city || 'N/A',
+          agency.userCount || 0,
+          agency.plan || 'Standard',
+          new Date(agency.createdAt).toLocaleDateString()
+        ])
+      ].map(row => row.join(',')).join('\n')
+
+      // Download CSV file
+      const blob = new Blob([csvContent], { type: 'text/csv' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `leadestate-analytics-${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+
+      toast.dismiss()
+      toast.success('Analytics exported successfully!')
+    } catch (error) {
+      toast.dismiss()
+      toast.error('Failed to export analytics')
+      console.error('Export error:', error)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -110,7 +162,10 @@ const Analytics = () => {
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
-          <button className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+          <button
+            onClick={handleExport}
+            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
             <Download className="h-4 w-4 mr-2" />
             Export
           </button>
