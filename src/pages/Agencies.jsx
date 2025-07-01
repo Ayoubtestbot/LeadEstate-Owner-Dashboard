@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { 
-  Building2, 
-  Users, 
-  Search, 
-  MoreVertical, 
-  Eye, 
-  Edit, 
-  Trash2, 
+import {
+  Building2,
+  Users,
+  Search,
+  MoreVertical,
+  Eye,
+  Edit,
+  Trash2,
   Plus,
   RefreshCw,
   MapPin,

@@ -10,6 +10,7 @@
     "preview": "cd LeadEstate-Owner-Dashboard-main && npm run preview",
     "install-deps": "cd LeadEstate-Owner-Dashboard-main && npm install"
   },
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "axios": "^1.10.0"
+  }
 }
