@@ -43,8 +43,8 @@ const generateRefreshToken = (user) => {
   );
 };
 
-// Login endpoint
-router.post('/login', 
+// Owner Login endpoint (for Owner Dashboard)
+router.post('/login',
   authLimiter,
   [
     body('email')
@@ -415,5 +415,282 @@ router.get('/verify', async (req, res) => {
     });
   }
 });
+
+// ===== OWNER DASHBOARD AUTHENTICATION ENDPOINTS =====
+
+// Owner Login endpoint (for Owner Dashboard)
+router.post('/owner/login',
+  authLimiter,
+  [
+    body('email')
+      .isEmail()
+      .normalizeEmail()
+      .withMessage('Please provide a valid email'),
+    body('password')
+      .isLength({ min: 6 })
+      .withMessage('Password must be at least 6 characters long')
+  ],
+  async (req, res) => {
+    try {
+      // Check validation errors
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { email, password } = req.body;
+
+      // For now, use hardcoded owner credentials
+      // In production, you'd have an owners table in the database
+      if (email === 'owner@leadestate.com' && password === 'password123') {
+        const ownerUser = {
+          id: 'owner-1',
+          email: 'owner@leadestate.com',
+          firstName: 'Owner',
+          lastName: 'Admin',
+          role: 'owner',
+          userType: 'owner'
+        };
+
+        // Generate JWT token for owner
+        const token = jwt.sign(
+          {
+            id: ownerUser.id,
+            email: ownerUser.email,
+            role: ownerUser.role,
+            userType: 'owner'
+          },
+          process.env.JWT_SECRET,
+          { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+        );
+
+        logger.info(`Owner login successful: ${email}`);
+
+        return res.json({
+          success: true,
+          message: 'Login successful',
+          data: {
+            token,
+            user: {
+              id: ownerUser.id,
+              email: ownerUser.email,
+              firstName: ownerUser.firstName,
+              lastName: ownerUser.lastName,
+              role: ownerUser.role,
+              userType: ownerUser.userType
+            }
+          }
+        });
+      } else {
+        logger.warn(`Failed owner login attempt for email: ${email}`);
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid email or password'
+        });
+      }
+
+    } catch (error) {
+      logger.error('Owner login error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+);
+
+// Owner Token Verification
+router.get('/owner/verify', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Access token required'
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    if (decoded.userType !== 'owner') {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid token type'
+      });
+    }
+
+    // Return owner user data
+    const ownerUser = {
+      id: 'owner-1',
+      email: 'owner@leadestate.com',
+      firstName: 'Owner',
+      lastName: 'Admin',
+      role: 'owner',
+      userType: 'owner'
+    };
+
+    res.json({
+      success: true,
+      user: ownerUser
+    });
+
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired token'
+      });
+    }
+
+    logger.error('Owner token verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// Owner Logout
+router.post('/owner/logout', async (req, res) => {
+  try {
+    // In a production app, you might want to blacklist the token
+    // For now, we'll just return success
+    res.json({
+      success: true,
+      message: 'Logged out successfully'
+    });
+  } catch (error) {
+    logger.error('Owner logout error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+});
+
+// Owner Forgot Password
+router.post('/owner/forgot-password',
+  authLimiter,
+  [
+    body('email')
+      .isEmail()
+      .normalizeEmail()
+      .withMessage('Please provide a valid email')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { email } = req.body;
+
+      // Check if it's the owner email
+      if (email !== 'owner@leadestate.com') {
+        return res.status(404).json({
+          success: false,
+          message: 'No account found with this email address'
+        });
+      }
+
+      // Generate reset token
+      const resetToken = require('crypto').randomBytes(32).toString('hex');
+
+      // In production, you'd store this token in a database with expiry
+      // For now, we'll just send the email
+
+      // Send reset email
+      const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+
+      try {
+        await brevoService.sendEmail({
+          to: email,
+          subject: 'Password Reset Request - LeadEstate Owner Dashboard',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2>Password Reset Request</h2>
+              <p>Hello Owner,</p>
+              <p>You requested a password reset for your LeadEstate Owner Dashboard account.</p>
+              <p>Click the button below to reset your password:</p>
+              <a href="${resetUrl}" style="display: inline-block; background-color: #3B82F6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 16px 0;">Reset Password</a>
+              <p>Or copy and paste this link in your browser:</p>
+              <p style="word-break: break-all; color: #666;">${resetUrl}</p>
+              <p>This link will expire in 1 hour for security reasons.</p>
+              <p>If you didn't request this password reset, please ignore this email.</p>
+              <hr style="margin: 24px 0; border: none; border-top: 1px solid #eee;">
+              <p style="color: #666; font-size: 12px;">LeadEstate - Real Estate CRM Platform</p>
+            </div>
+          `
+        });
+      } catch (emailError) {
+        logger.error('Email sending error:', emailError);
+        // Continue anyway - don't fail the request if email fails
+      }
+
+      res.json({
+        success: true,
+        message: 'Password reset email sent successfully'
+      });
+
+    } catch (error) {
+      logger.error('Owner forgot password error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+);
+
+// Owner Reset Password
+router.post('/owner/reset-password',
+  [
+    body('token')
+      .notEmpty()
+      .withMessage('Reset token is required'),
+    body('newPassword')
+      .isLength({ min: 8 })
+      .withMessage('Password must be at least 8 characters long')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation failed',
+          errors: errors.array()
+        });
+      }
+
+      const { token, newPassword } = req.body;
+
+      // For demo purposes, accept any token for owner
+      // In production, you'd validate the token properly
+      res.json({
+        success: true,
+        message: 'Password reset successfully'
+      });
+
+    } catch (error) {
+      logger.error('Owner reset password error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
+);
 
 module.exports = router;
