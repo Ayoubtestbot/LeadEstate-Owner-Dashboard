@@ -444,54 +444,79 @@ router.post('/owner/login',
 
       const { email, password } = req.body;
 
-      // For now, use hardcoded owner credentials
-      // In production, you'd have an owners table in the database
-      if (email === 'owner@leadestate.com' && password === 'password123') {
-        const ownerUser = {
-          id: 'owner-1',
-          email: 'owner@leadestate.com',
-          firstName: 'Owner',
-          lastName: 'Admin',
-          role: 'owner',
-          userType: 'owner'
-        };
-
-        // Generate JWT token for owner
-        const token = jwt.sign(
-          {
-            id: ownerUser.id,
-            email: ownerUser.email,
-            role: ownerUser.role,
-            userType: 'owner'
-          },
-          process.env.JWT_SECRET,
-          { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-        );
-
-        logger.info(`Owner login successful: ${email}`);
-
-        return res.json({
-          success: true,
-          message: 'Login successful',
-          data: {
-            token,
-            user: {
-              id: ownerUser.id,
-              email: ownerUser.email,
-              firstName: ownerUser.firstName,
-              lastName: ownerUser.lastName,
-              role: ownerUser.role,
-              userType: ownerUser.userType
-            }
-          }
+      // Get database connection
+      const { pool } = require('../config/database');
+      if (!pool) {
+        logger.error('Database connection not available');
+        return res.status(500).json({
+          success: false,
+          message: 'Database connection error'
         });
-      } else {
+      }
+
+      // Find owner by email
+      const ownerResult = await pool.query(
+        'SELECT * FROM owners WHERE email = $1 AND status = $2',
+        [email, 'active']
+      );
+
+      if (ownerResult.rows.length === 0) {
         logger.warn(`Failed owner login attempt for email: ${email}`);
         return res.status(401).json({
           success: false,
           message: 'Invalid email or password'
         });
       }
+
+      const owner = ownerResult.rows[0];
+
+      // Verify password
+      const bcrypt = require('bcryptjs');
+      const isValidPassword = await bcrypt.compare(password, owner.password_hash);
+
+      if (!isValidPassword) {
+        logger.warn(`Failed owner login attempt for email: ${email} - invalid password`);
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid email or password'
+        });
+      }
+
+      // Update last login time
+      await pool.query(
+        'UPDATE owners SET last_login_at = NOW() WHERE id = $1',
+        [owner.id]
+      );
+
+      // Generate JWT token for owner
+      const token = jwt.sign(
+        {
+          id: owner.id,
+          email: owner.email,
+          role: owner.role,
+          userType: 'owner'
+        },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      );
+
+      logger.info(`Owner login successful: ${email}`);
+
+      return res.json({
+        success: true,
+        message: 'Login successful',
+        data: {
+          token,
+          user: {
+            id: owner.id,
+            email: owner.email,
+            firstName: owner.first_name,
+            lastName: owner.last_name,
+            role: owner.role,
+            userType: 'owner'
+          }
+        }
+      });
 
     } catch (error) {
       logger.error('Owner login error:', error);
@@ -525,19 +550,40 @@ router.get('/owner/verify', async (req, res) => {
       });
     }
 
-    // Return owner user data
-    const ownerUser = {
-      id: 'owner-1',
-      email: 'owner@leadestate.com',
-      firstName: 'Owner',
-      lastName: 'Admin',
-      role: 'owner',
-      userType: 'owner'
-    };
+    // Get database connection
+    const { pool } = require('../config/database');
+    if (!pool) {
+      return res.status(500).json({
+        success: false,
+        message: 'Database connection error'
+      });
+    }
+
+    // Find owner by ID
+    const ownerResult = await pool.query(
+      'SELECT * FROM owners WHERE id = $1 AND status = $2',
+      [decoded.id, 'active']
+    );
+
+    if (ownerResult.rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        message: 'Owner not found or inactive'
+      });
+    }
+
+    const owner = ownerResult.rows[0];
 
     res.json({
       success: true,
-      user: ownerUser
+      user: {
+        id: owner.id,
+        email: owner.email,
+        firstName: owner.first_name,
+        lastName: owner.last_name,
+        role: owner.role,
+        userType: 'owner'
+      }
     });
 
   } catch (error) {
@@ -596,19 +642,39 @@ router.post('/owner/forgot-password',
 
       const { email } = req.body;
 
-      // Check if it's the owner email
-      if (email !== 'owner@leadestate.com') {
+      // Get database connection
+      const { pool } = require('../config/database');
+      if (!pool) {
+        return res.status(500).json({
+          success: false,
+          message: 'Database connection error'
+        });
+      }
+
+      // Check if owner exists
+      const ownerResult = await pool.query(
+        'SELECT * FROM owners WHERE email = $1 AND status = $2',
+        [email, 'active']
+      );
+
+      if (ownerResult.rows.length === 0) {
         return res.status(404).json({
           success: false,
           message: 'No account found with this email address'
         });
       }
 
+      const owner = ownerResult.rows[0];
+
       // Generate reset token
       const resetToken = require('crypto').randomBytes(32).toString('hex');
+      const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour
 
-      // In production, you'd store this token in a database with expiry
-      // For now, we'll just send the email
+      // Store reset token in database
+      await pool.query(
+        'UPDATE owners SET reset_token = $1, reset_token_expires = $2 WHERE id = $3',
+        [resetToken, resetTokenExpiry, owner.id]
+      );
 
       // Send reset email
       const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
@@ -676,8 +742,41 @@ router.post('/owner/reset-password',
 
       const { token, newPassword } = req.body;
 
-      // For demo purposes, accept any token for owner
-      // In production, you'd validate the token properly
+      // Get database connection
+      const { pool } = require('../config/database');
+      if (!pool) {
+        return res.status(500).json({
+          success: false,
+          message: 'Database connection error'
+        });
+      }
+
+      // Validate reset token
+      const ownerResult = await pool.query(
+        'SELECT * FROM owners WHERE reset_token = $1 AND reset_token_expires > NOW() AND status = $2',
+        [token, 'active']
+      );
+
+      if (ownerResult.rows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid or expired reset token'
+        });
+      }
+
+      const owner = ownerResult.rows[0];
+
+      // Hash new password
+      const bcrypt = require('bcryptjs');
+      const saltRounds = 12;
+      const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+      // Update password and clear reset token
+      await pool.query(
+        'UPDATE owners SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL WHERE id = $2',
+        [hashedPassword, owner.id]
+      );
+
       res.json({
         success: true,
         message: 'Password reset successfully'
