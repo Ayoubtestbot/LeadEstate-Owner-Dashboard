@@ -6,6 +6,7 @@ import {
   Home,
   Users,
   Building,
+  Building2,
   BarChart3,
   Settings as SettingsIcon,
   UserCheck,
@@ -13,7 +14,12 @@ import {
   LogOut,
   Plus,
   Search,
-  Filter
+  Filter,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  Loader2
 } from 'lucide-react'
 
 // Import pages
@@ -29,6 +35,7 @@ import Clients from './pages/Clients'
 import Tasks from './pages/Tasks'
 import Reports from './pages/Reports'
 import Profile from './pages/Profile'
+import ResetPassword from './pages/ResetPassword'
 
 // Import components
 import Layout from './components/Layout'
@@ -599,21 +606,144 @@ const AuthProvider = ({ children }) => {
         return { success: false, message: data.message }
       }
     } catch (error) {
-      toast.error('Login failed')
+      console.error('Login error:', error)
+      toast.error('Login failed. Please check your connection.')
       return { success: false, message: 'Login failed' }
     } finally {
       setLoading(false)
     }
   }
 
-  const logout = () => {
-    localStorage.removeItem('token')
-    setUser(null)
-    toast.success('Logged out successfully')
+  const forgotPassword = async (email) => {
+    try {
+      setLoading(true)
+      const response = await fetch(`${API_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast.success('Password reset email sent!')
+        return { success: true }
+      } else {
+        toast.error(data.message || 'Failed to send reset email')
+        return { success: false, message: data.message }
+      }
+    } catch (error) {
+      console.error('Forgot password error:', error)
+      toast.error('Failed to send reset email')
+      return { success: false, message: 'Failed to send reset email' }
+    } finally {
+      setLoading(false)
+    }
   }
 
+  const resetPassword = async (token, newPassword) => {
+    try {
+      setLoading(true)
+      const response = await fetch(`${API_URL}/auth/reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token, newPassword }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast.success('Password reset successfully!')
+        return { success: true }
+      } else {
+        toast.error(data.message || 'Failed to reset password')
+        return { success: false, message: data.message }
+      }
+    } catch (error) {
+      console.error('Reset password error:', error)
+      toast.error('Failed to reset password')
+      return { success: false, message: 'Failed to reset password' }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const verifyToken = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (!token) return false
+
+      const response = await fetch(`${API_URL}/auth/verify`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setUser(data.user)
+        return true
+      } else {
+        localStorage.removeItem('token')
+        setUser(null)
+        return false
+      }
+    } catch (error) {
+      console.error('Token verification error:', error)
+      localStorage.removeItem('token')
+      setUser(null)
+      return false
+    }
+  }
+
+  const logout = async () => {
+    try {
+      const token = localStorage.getItem('token')
+      if (token) {
+        await fetch(`${API_URL}/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        })
+      }
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      localStorage.removeItem('token')
+      setUser(null)
+      toast.success('Logged out successfully')
+    }
+  }
+
+  // Check authentication status on app load
+  useEffect(() => {
+    const checkAuth = async () => {
+      const isValid = await verifyToken()
+      if (!isValid) {
+        setLoading(false)
+      } else {
+        setLoading(false)
+      }
+    }
+    checkAuth()
+  }, [])
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{
+      user,
+      login,
+      logout,
+      forgotPassword,
+      resetPassword,
+      verifyToken,
+      loading
+    }}>
       {children}
     </AuthContext.Provider>
   )
@@ -623,56 +753,192 @@ const AuthProvider = ({ children }) => {
 const Login = () => {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const { login, loading } = useAuth()
+  const [showPassword, setShowPassword] = useState(false)
+  const [showForgotPassword, setShowForgotPassword] = useState(false)
+  const [errors, setErrors] = useState({})
+  const { login, forgotPassword, loading } = useAuth()
   const navigate = useNavigate()
+
+  const validateForm = () => {
+    const newErrors = {}
+    if (!email) {
+      newErrors.email = 'Email is required'
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = 'Please enter a valid email'
+    }
+    if (!password && !showForgotPassword) {
+      newErrors.password = 'Password is required'
+    }
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+
+    if (showForgotPassword) {
+      if (!email) {
+        setErrors({ email: 'Email is required' })
+        return
+      }
+      const result = await forgotPassword(email)
+      if (result.success) {
+        setShowForgotPassword(false)
+        setEmail('')
+      }
+      return
+    }
+
+    if (!validateForm()) return
+
     const result = await login({ email, password })
     if (result.success) {
       navigate('/dashboard')
     }
   }
 
+  const handleInputChange = (field, value) => {
+    if (field === 'email') setEmail(value)
+    if (field === 'password') setPassword(value)
+
+    // Clear errors when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }))
+    }
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-900">LeadEstate</h2>
-          <p className="mt-2 text-sm text-gray-600">Complete Real Estate CRM</p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div>
-            <input
-              type="email"
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Email address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+          <div className="flex justify-center">
+            <div className="bg-blue-600 p-3 rounded-full">
+              <Building2 className="h-8 w-8 text-white" />
+            </div>
           </div>
-          <div>
-            <input
-              type="password"
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
-          </button>
-          <p className="text-center text-sm text-gray-600">
-            Demo: admin@demo.com / password
+          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
+            {showForgotPassword ? 'Reset Password' : 'LeadEstate CRM'}
+          </h2>
+          <p className="mt-2 text-sm text-gray-600">
+            {showForgotPassword
+              ? 'Enter your email to receive a reset link'
+              : 'Sign in to your agency dashboard'
+            }
           </p>
+        </div>
+
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div className="space-y-4">
+            {/* Email Field */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                Email Address
+              </label>
+              <div className="mt-1 relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                </div>
+                <input
+                  id="email"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  className={`appearance-none relative block w-full pl-10 pr-3 py-2 border ${
+                    errors.email ? 'border-red-300' : 'border-gray-300'
+                  } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+                  placeholder="Enter your email"
+                />
+              </div>
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+              )}
+            </div>
+
+            {/* Password Field - Hidden in forgot password mode */}
+            {!showForgotPassword && (
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  Password
+                </label>
+                <div className="mt-1 relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => handleInputChange('password', e.target.value)}
+                    className={`appearance-none relative block w-full pl-10 pr-10 py-2 border ${
+                      errors.password ? 'border-red-300' : 'border-gray-300'
+                    } placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm`}
+                    placeholder="Enter your password"
+                  />
+                  <button
+                    type="button"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    ) : (
+                      <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    )}
+                  </button>
+                </div>
+                {errors.password && (
+                  <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Submit Button */}
+          <div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  {showForgotPassword ? 'Sending...' : 'Signing in...'}
+                </>
+              ) : (
+                showForgotPassword ? 'Send Reset Link' : 'Sign in'
+              )}
+            </button>
+          </div>
+
+          {/* Toggle between login and forgot password */}
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => {
+                setShowForgotPassword(!showForgotPassword)
+                setErrors({})
+                setPassword('')
+              }}
+              className="text-blue-600 hover:text-blue-500 font-medium text-sm"
+            >
+              {showForgotPassword ? 'Back to login' : 'Forgot your password?'}
+            </button>
+          </div>
         </form>
+
+        {/* Demo Credentials */}
+        {!showForgotPassword && (
+          <div className="mt-6 p-4 bg-blue-50 rounded-md">
+            <h3 className="text-sm font-medium text-blue-800 mb-2">Demo Credentials</h3>
+            <div className="text-xs text-blue-700 space-y-1">
+              <p><strong>Manager:</strong> manager@agency.com / password123</p>
+              <p><strong>Agent:</strong> agent@agency.com / password123</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -792,6 +1058,7 @@ function AppWithAuth() {
           <div className="App">
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={
                 <ProtectedRoute>
