@@ -56,6 +56,12 @@ export const handleApiError = (error) => {
 
 // Owner Dashboard API endpoints
 export const ownerAPI = {
+  // Base HTTP methods for authentication
+  get: (url, config = {}) => api.get(url, config),
+  post: (url, data, config = {}) => api.post(url, data, config),
+  put: (url, data, config = {}) => api.put(url, data, config),
+  delete: (url, config = {}) => api.delete(url, config),
+
   // Dashboard stats
   getDashboardStats: () => api.get('/api/owner-integration/dashboard/stats', {
     headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
