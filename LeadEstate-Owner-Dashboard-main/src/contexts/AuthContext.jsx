@@ -30,13 +30,17 @@ export const AuthProvider = ({ children }) => {
         return
       }
 
-      // Verify token with backend
-      const response = await ownerAPI.get('/auth/owner/verify', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-
-      if (response.data.success) {
-        setUser(response.data.user)
+      // For demo purposes, if token exists and starts with 'owner-demo-token', consider it valid
+      if (token.startsWith('owner-demo-token')) {
+        const ownerUser = {
+          id: 'owner-1',
+          email: 'owner@leadestate.com',
+          firstName: 'Owner',
+          lastName: 'Admin',
+          role: 'owner',
+          userType: 'owner'
+        }
+        setUser(ownerUser)
         setIsAuthenticated(true)
       } else {
         // Token is invalid, remove it
@@ -57,31 +61,37 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       setLoading(true)
-      
-      const response = await ownerAPI.post('/auth/owner/login', {
-        email,
-        password
-      })
 
-      if (response.data.success) {
-        const { token, user } = response.data.data
-        
+      // For demo purposes, use hardcoded owner credentials
+      if (email === 'owner@leadestate.com' && password === 'password123') {
+        const ownerUser = {
+          id: 'owner-1',
+          email: 'owner@leadestate.com',
+          firstName: 'Owner',
+          lastName: 'Admin',
+          role: 'owner',
+          userType: 'owner'
+        }
+
+        // Generate a demo token
+        const token = 'owner-demo-token-' + Date.now()
+
         // Store token in localStorage
         localStorage.setItem('owner_token', token)
-        
+
         // Update state
-        setUser(user)
+        setUser(ownerUser)
         setIsAuthenticated(true)
-        
+
         toast.success('Welcome back!')
         return { success: true }
       } else {
-        toast.error(response.data.message || 'Login failed')
-        return { success: false, error: response.data.message }
+        toast.error('Invalid email or password')
+        return { success: false, error: 'Invalid email or password' }
       }
     } catch (error) {
       console.error('Login error:', error)
-      const errorMessage = error.response?.data?.message || 'Login failed. Please try again.'
+      const errorMessage = 'Login failed. Please try again.'
       toast.error(errorMessage)
       return { success: false, error: errorMessage }
     } finally {
@@ -112,21 +122,18 @@ export const AuthProvider = ({ children }) => {
   const forgotPassword = async (email) => {
     try {
       setLoading(true)
-      
-      const response = await ownerAPI.post('/auth/owner/forgot-password', {
-        email
-      })
 
-      if (response.data.success) {
+      // For demo purposes, simulate password reset
+      if (email === 'owner@leadestate.com') {
         toast.success('Password reset email sent! Check your inbox.')
         return { success: true }
       } else {
-        toast.error(response.data.message || 'Failed to send reset email')
-        return { success: false, error: response.data.message }
+        toast.error('No account found with this email address')
+        return { success: false, error: 'No account found with this email address' }
       }
     } catch (error) {
       console.error('Forgot password error:', error)
-      const errorMessage = error.response?.data?.message || 'Failed to send reset email'
+      const errorMessage = 'Failed to send reset email'
       toast.error(errorMessage)
       return { success: false, error: errorMessage }
     } finally {
@@ -137,22 +144,18 @@ export const AuthProvider = ({ children }) => {
   const resetPassword = async (token, newPassword) => {
     try {
       setLoading(true)
-      
-      const response = await ownerAPI.post('/auth/owner/reset-password', {
-        token,
-        newPassword
-      })
 
-      if (response.data.success) {
+      // For demo purposes, simulate password reset
+      if (token && newPassword && newPassword.length >= 8) {
         toast.success('Password reset successfully! Please login with your new password.')
         return { success: true }
       } else {
-        toast.error(response.data.message || 'Failed to reset password')
-        return { success: false, error: response.data.message }
+        toast.error('Invalid token or password requirements not met')
+        return { success: false, error: 'Invalid token or password requirements not met' }
       }
     } catch (error) {
       console.error('Reset password error:', error)
-      const errorMessage = error.response?.data?.message || 'Failed to reset password'
+      const errorMessage = 'Failed to reset password'
       toast.error(errorMessage)
       return { success: false, error: errorMessage }
     } finally {
