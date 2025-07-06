@@ -261,15 +261,35 @@ async function sendWelcomeWhatsAppMessage(lead) {
     } else if (phoneNumber.startsWith('33')) {
       // French number with country code - keep as is
       phoneNumber = phoneNumber;
+    } else if (phoneNumber.startsWith('1') && phoneNumber.length === 11) {
+      // US/Canada number - keep as is
+      phoneNumber = phoneNumber;
+    } else if (phoneNumber.startsWith('44') && phoneNumber.length >= 11) {
+      // UK number - keep as is
+      phoneNumber = phoneNumber;
+    } else if (phoneNumber.startsWith('49') && phoneNumber.length >= 11) {
+      // Germany number - keep as is
+      phoneNumber = phoneNumber;
+    } else if (phoneNumber.startsWith('34') && phoneNumber.length === 11) {
+      // Spain number - keep as is
+      phoneNumber = phoneNumber;
+    } else if (phoneNumber.startsWith('39') && phoneNumber.length >= 10) {
+      // Italy number - keep as is
+      phoneNumber = phoneNumber;
     } else if (!phoneNumber.startsWith('33') && !phoneNumber.startsWith('212') && phoneNumber.length === 10) {
       // Assume French number if 10 digits and no country code
       phoneNumber = '33' + phoneNumber;
+    } else if (phoneNumber.length >= 8 && phoneNumber.length <= 15) {
+      // Generic international number - keep as is if reasonable length
+      phoneNumber = phoneNumber;
     }
 
     // Ensure it starts with + for Twilio
     if (!phoneNumber.startsWith('+')) {
       phoneNumber = '+' + phoneNumber;
     }
+
+    console.log('📞 Original phone:', lead.phone, '→ Formatted:', phoneNumber);
 
     // Create welcome message based on language
     let message;
@@ -571,6 +591,28 @@ app.post('/api/leads', async (req, res) => {
     const firstName = nameParts[0] || '';
     const lastName = nameParts.slice(1).join(' ') || '';
 
+    // Auto-assign lead to available agent if not already assigned
+    let assignedAgent = leadData.assignedTo;
+
+    if (!assignedAgent) {
+      try {
+        // Get available agents (active team members)
+        const agentsResult = await pool.query(
+          'SELECT name FROM team_members WHERE status = $1 ORDER BY created_at ASC LIMIT 1',
+          ['active']
+        );
+
+        if (agentsResult.rows.length > 0) {
+          assignedAgent = agentsResult.rows[0].name;
+          console.log('🤖 Auto-assigned lead to agent:', assignedAgent);
+        } else {
+          console.log('⚠️ No active agents available for auto-assignment');
+        }
+      } catch (assignError) {
+        console.log('⚠️ Error during auto-assignment:', assignError.message);
+      }
+    }
+
     const newLead = {
       id: generateId(),
       first_name: firstName,
@@ -582,7 +624,7 @@ app.post('/api/leads', async (req, res) => {
       budget: leadData.budget ? parseFloat(leadData.budget) : null,
       notes: leadData.notes || '',
       status: leadData.status || 'new',
-      assigned_to: leadData.assignedTo || null, // Include assigned agent
+      assigned_to: assignedAgent, // Use auto-assigned or provided agent
       language: leadData.language || 'fr', // Include language preference
       agency_id: 'default-agency', // Default agency ID
       created_at: new Date().toISOString(),
@@ -621,7 +663,7 @@ app.post('/api/leads', async (req, res) => {
       updated_at: result.rows[0].updated_at
     };
 
-    // Send welcome WhatsApp message if phone number is provided and lead is assigned
+    // Send welcome WhatsApp message ONLY if phone number is provided AND lead is assigned to an agent
     let whatsappResult = null;
     if (result.rows[0].phone && result.rows[0].assigned_to) {
       try {
@@ -631,6 +673,10 @@ app.post('/api/leads', async (req, res) => {
         console.log('⚠️ WhatsApp message failed (non-critical):', whatsappError.message);
         whatsappResult = { success: false, error: whatsappError.message };
       }
+    } else if (result.rows[0].phone && !result.rows[0].assigned_to) {
+      console.log('📱 Lead has phone number but no assigned agent - WhatsApp message will be sent when agent is assigned');
+    } else {
+      console.log('📱 No phone number provided, skipping WhatsApp message');
     }
 
     // Include WhatsApp status in response
@@ -725,11 +771,36 @@ app.put('/api/leads/:id', async (req, res) => {
       updated_at: result.rows[0].updated_at
     };
 
-    res.json({
+    // Send welcome WhatsApp message if lead was just assigned to an agent
+    let whatsappResult = null;
+    if (updateData.assignedTo && result.rows[0].phone && result.rows[0].assigned_to) {
+      try {
+        console.log('📱 Lead assigned to agent, sending welcome WhatsApp message...');
+        whatsappResult = await sendWelcomeWhatsAppMessage(updatedLead);
+        console.log('📱 WhatsApp welcome result:', whatsappResult);
+      } catch (whatsappError) {
+        console.log('⚠️ WhatsApp message failed (non-critical):', whatsappError.message);
+        whatsappResult = { success: false, error: whatsappError.message };
+      }
+    }
+
+    // Include WhatsApp status in response if message was sent
+    const response = {
       success: true,
       data: updatedLead,
       message: 'Lead updated successfully'
-    });
+    };
+
+    if (whatsappResult) {
+      response.whatsapp = whatsappResult;
+      if (whatsappResult.success && whatsappResult.method === 'twilio') {
+        response.message += ' - WhatsApp welcome message sent to lead!';
+      } else if (whatsappResult.success && whatsappResult.method === 'url_only') {
+        response.message += ' - WhatsApp welcome message prepared (Twilio not configured)';
+      }
+    }
+
+    res.json(response);
   } catch (error) {
     console.error('Error updating lead:', error);
     res.status(500).json({
