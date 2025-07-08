@@ -110,7 +110,12 @@ export const ownerAPI = {
   }),
   getFAQs: () => api.get('/api/owner-integration/support/faqs', {
     headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
-  })
+  }),
+
+  // Authentication - FIXED: Correct API paths
+  login: (credentials) => api.post('/api/auth/owner/login', credentials),
+  logout: () => api.post('/api/auth/owner/logout'),
+  refreshToken: () => api.post('/api/auth/owner/refresh'),
 }
 
 // Agency creation with repository setup

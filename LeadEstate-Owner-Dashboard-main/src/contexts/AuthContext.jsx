@@ -58,7 +58,7 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true)
 
-      const response = await ownerAPI.post('/auth/owner/login', {
+      const response = await ownerAPI.post('/api/auth/owner/login', {
         email,
         password
       })

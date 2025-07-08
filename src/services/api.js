@@ -81,10 +81,10 @@ export const ownerAPI = {
   createSupportTicket: (data) => api.post('/owner/support/tickets', data),
   updateTicketStatus: (id, status) => api.put(`/owner/support/tickets/${id}/status`, { status }),
 
-  // Authentication
-  login: (credentials) => api.post('/owner/auth/login', credentials),
-  logout: () => api.post('/owner/auth/logout'),
-  refreshToken: () => api.post('/owner/auth/refresh'),
+  // Authentication - FIXED: Correct API paths
+  login: (credentials) => api.post('/api/auth/owner/login', credentials),
+  logout: () => api.post('/api/auth/owner/logout'),
+  refreshToken: () => api.post('/api/auth/owner/refresh'),
 }
 
 // Agency creation with repository setup
