@@ -16,16 +16,94 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
 
+  // PERFORMANCE: Add caching to avoid repeated API calls
+  const [dataCache, setDataCache] = useState({
+    data: null,
+    timestamp: null,
+    isValid: false
+  })
+  const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes cache
+
   // Load dashboard data
   useEffect(() => {
     loadDashboardData()
   }, [])
 
-  const loadDashboardData = async () => {
+  // OPTIMIZED: Load dashboard data with caching + single API call + fallback
+  const loadDashboardData = async (forceRefresh = false) => {
     try {
+      console.log('🚀 Owner Dashboard: Starting optimized data loading...')
+
+      // Check cache first (unless force refresh)
+      if (!forceRefresh && dataCache.isValid && dataCache.timestamp) {
+        const cacheAge = Date.now() - dataCache.timestamp
+        if (cacheAge < CACHE_DURATION) {
+          console.log('📦 Using cached data (age:', Math.round(cacheAge / 1000), 'seconds)')
+
+          // Use cached data
+          const cachedStats = dataCache.data.stats
+          const cachedAgencies = dataCache.data.agencies
+
+          // Update stats display
+          setStats([
+            { name: 'Total Agencies', value: cachedStats.totalAgencies.toString(), icon: Building2, change: `+${cachedStats.newAgenciesThisMonth}`, changeType: 'positive' },
+            { name: 'Active Users', value: cachedStats.totalUsers.toString(), icon: Users, change: `+${cachedStats.userGrowthPercent}%`, changeType: 'positive' },
+            { name: 'Monthly Revenue', value: `$${cachedStats.monthlyRevenue}`, icon: DollarSign, change: `+${cachedStats.revenueGrowthPercent}%`, changeType: 'positive' },
+            { name: 'System Health', value: `${cachedStats.systemHealth}%`, icon: Activity, change: '+0.1%', changeType: 'positive' },
+          ])
+
+          // Update recent agencies
+          setRecentAgencies(cachedAgencies.slice(0, 5))
+
+          return // Exit early with cached data
+        } else {
+          console.log('⏰ Cache expired, fetching fresh data...')
+        }
+      }
+
       setLoading(true)
 
-      // Try to load dashboard stats, fallback to demo data if backend not ready
+      // Try optimized single API call first
+      try {
+        console.log('🔄 Trying optimized dashboard endpoint...')
+        const response = await ownerAPI.get('/api/owner-integration/dashboard/all-data')
+
+        if (response.data.success) {
+          const { stats: dashboardStats, agencies } = response.data.data
+
+          console.log('✅ Optimized data received:', {
+            stats: dashboardStats,
+            agencies: agencies.length
+          })
+
+          // Cache the data for future use
+          setDataCache({
+            data: { stats: dashboardStats, agencies },
+            timestamp: Date.now(),
+            isValid: true
+          })
+
+          // Update stats display
+          setStats([
+            { name: 'Total Agencies', value: dashboardStats.totalAgencies.toString(), icon: Building2, change: `+${dashboardStats.newAgenciesThisMonth}`, changeType: 'positive' },
+            { name: 'Active Users', value: dashboardStats.totalUsers.toString(), icon: Users, change: `+${dashboardStats.userGrowthPercent}%`, changeType: 'positive' },
+            { name: 'Monthly Revenue', value: `$${dashboardStats.monthlyRevenue}`, icon: DollarSign, change: `+${dashboardStats.revenueGrowthPercent}%`, changeType: 'positive' },
+            { name: 'System Health', value: `${dashboardStats.systemHealth}%`, icon: Activity, change: '+0.1%', changeType: 'positive' },
+          ])
+
+          // Update recent agencies
+          setRecentAgencies(agencies.slice(0, 5))
+
+          console.log('📊 Optimized dashboard data loaded and cached')
+          return // Success, exit early
+        }
+      } catch (optimizedError) {
+        console.warn('❌ Optimized endpoint failed, using fallback:', optimizedError.message)
+      }
+
+      // Fallback: Use parallel individual calls
+      console.log('🔄 Using fallback method with parallel calls...')
+
       let dashboardStats = {
         totalAgencies: 0,
         newAgenciesThisMonth: 0,
@@ -36,11 +114,21 @@ const Dashboard = () => {
         systemHealth: 99.9
       }
 
-      try {
-        const statsResponse = await ownerAPI.getDashboardStats()
-        dashboardStats = statsResponse.data.data || statsResponse.data
-      } catch (statsError) {
-        console.warn('Dashboard stats endpoint not available, using demo data:', statsError.message)
+      const [statsResult, agenciesResult] = await Promise.all([
+        ownerAPI.getDashboardStats().catch((err) => {
+          console.warn('Stats API failed:', err.message)
+          return null
+        }),
+        ownerAPI.getAgencies({ limit: 5 }).catch((err) => {
+          console.warn('Agencies API failed:', err.message)
+          return null
+        })
+      ])
+
+      // Process stats
+      if (statsResult) {
+        dashboardStats = statsResult.data.data || statsResult.data
+      } else {
         // Use demo data when backend is not ready
         dashboardStats = {
           totalAgencies: 3,
@@ -53,6 +141,7 @@ const Dashboard = () => {
         }
       }
 
+      // Update stats display
       setStats([
         {
           name: 'Total Agencies',
@@ -84,13 +173,11 @@ const Dashboard = () => {
         },
       ])
 
-      // Try to load recent agencies, fallback to demo data
+      // Process agencies
       let agencies = []
-      try {
-        const agenciesResponse = await ownerAPI.getAgencies({ limit: 5 })
-        agencies = agenciesResponse.data.data || agenciesResponse.data || []
-      } catch (agenciesError) {
-        console.warn('Agencies endpoint not available, using demo data:', agenciesError.message)
+      if (agenciesResult) {
+        agencies = agenciesResult.data.data || agenciesResult.data || []
+      } else {
         // Use demo data when backend is not ready
         agencies = [
           {
@@ -119,6 +206,13 @@ const Dashboard = () => {
           }
         ]
       }
+
+      // Cache fallback data too
+      setDataCache({
+        data: { stats: dashboardStats, agencies },
+        timestamp: Date.now(),
+        isValid: true
+      })
       setRecentAgencies(agencies)
 
     } catch (error) {
@@ -130,13 +224,19 @@ const Dashboard = () => {
   }
 
   const handleAgencyCreated = (newAgency) => {
-    // Refresh dashboard data
-    loadDashboardData()
+    // Refresh dashboard data with force refresh
+    loadDashboardData(true)
 
     // If we have demo data, add the new agency to the recent agencies list
     if (newAgency?.agency) {
       setRecentAgencies(prev => [newAgency.agency, ...prev.slice(0, 4)])
     }
+  }
+
+  // OPTIMIZED: Refresh function with force refresh
+  const refreshDashboard = () => {
+    console.log('🔄 Force refreshing dashboard data...')
+    loadDashboardData(true) // Force refresh
   }
 
   return (
@@ -149,7 +249,7 @@ const Dashboard = () => {
         </div>
         <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
           <button
-            onClick={loadDashboardData}
+            onClick={refreshDashboard}
             className="w-full sm:w-auto bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 text-sm sm:text-base flex items-center justify-center"
             disabled={loading}
           >

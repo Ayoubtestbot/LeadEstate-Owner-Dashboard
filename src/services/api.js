@@ -44,6 +44,11 @@ export const ownerAPI = {
     headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
   }),
 
+  // OPTIMIZED: Single endpoint for all dashboard data
+  getDashboardAllData: () => api.get('/api/owner-integration/dashboard/all-data', {
+    headers: { 'x-owner-api-key': 'owner-dashboard-2024' }
+  }),
+
   // Agencies management
   getAgencies: (params = {}) => api.get('/api/owner-integration/agencies', {
     params,
