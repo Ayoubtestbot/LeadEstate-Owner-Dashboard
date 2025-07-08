@@ -87,48 +87,31 @@ const Login = () => {
             </button>
           </div>
 
-          {/* Demo Role Selection */}
+          {/* Owner Demo Credentials */}
           <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-md">
-            <h4 className="text-sm font-medium text-gray-900 mb-3">{t('login.demoAccounts')}:</h4>
+            <h4 className="text-sm font-medium text-gray-900 mb-3">Demo Owner Account:</h4>
             <div className="space-y-2">
               <button
                 type="button"
                 onClick={() => {
-                  setEmail('manager@demo.com')
-                  setPassword('demo123')
+                  setEmail('admin@leadestate.com')
+                  setPassword('admin123')
                 }}
-                className="w-full text-left px-3 py-2 text-sm bg-blue-50 hover:bg-blue-100 rounded-md transition-colors border border-blue-200"
+                className="w-full text-left px-3 py-2 text-sm bg-purple-50 hover:bg-purple-100 rounded-md transition-colors border border-purple-200"
               >
-                <div className="font-medium text-blue-900">🔧 Manager</div>
-                <div className="text-blue-700 text-xs">Full access to all features, automation, analytics</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('super@demo.com')
-                  setPassword('demo123')
-                }}
-                className="w-full text-left px-3 py-2 text-sm bg-green-50 hover:bg-green-100 rounded-md transition-colors border border-green-200"
-              >
-                <div className="font-medium text-green-900">⭐ Super Agent</div>
-                <div className="text-green-700 text-xs">Import leads, assign leads, view analytics</div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setEmail('agent@demo.com')
-                  setPassword('demo123')
-                }}
-                className="w-full text-left px-3 py-2 text-sm bg-orange-50 hover:bg-orange-100 rounded-md transition-colors border border-orange-200"
-              >
-                <div className="font-medium text-orange-900">👤 Agent</div>
-                <div className="text-orange-700 text-xs">View assigned leads and properties only</div>
+                <div className="font-medium text-purple-900">👑 Platform Owner</div>
+                <div className="text-purple-700 text-xs">Full platform access - manage all agencies, analytics, settings</div>
+                <div className="text-purple-600 text-xs mt-1">
+                  <strong>Email:</strong> admin@leadestate.com | <strong>Password:</strong> admin123
+                </div>
               </button>
             </div>
             <div className="mt-3 text-xs text-gray-600">
-              Click any role above to auto-fill login credentials
+              Click above to auto-fill the owner login credentials
+            </div>
+            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
+              <strong>Note:</strong> This is the Owner Dashboard for managing multiple real estate agencies.
+              For individual agency access, use the Agency CRM login.
             </div>
           </div>
         </form>

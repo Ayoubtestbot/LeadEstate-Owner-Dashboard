@@ -233,11 +233,14 @@ const Login = () => {
           </div>
 
           {/* Demo Credentials */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-md">
-            <h3 className="text-sm font-medium text-blue-800 mb-2">Demo Credentials</h3>
-            <div className="text-xs text-blue-700 space-y-1">
-              <p><strong>Email:</strong> owner@leadestate.com</p>
-              <p><strong>Password:</strong> password123</p>
+          <div className="mt-6 p-4 bg-purple-50 rounded-md border border-purple-200">
+            <h3 className="text-sm font-medium text-purple-800 mb-2">👑 Owner Demo Account</h3>
+            <div className="text-xs text-purple-700 space-y-1">
+              <p><strong>Email:</strong> admin@leadestate.com</p>
+              <p><strong>Password:</strong> admin123</p>
+            </div>
+            <div className="mt-2 text-xs text-purple-600">
+              Platform Owner - Full access to manage all agencies, analytics, and settings
             </div>
           </div>
         </form>
