@@ -11,10 +11,10 @@ const connectDatabase = async () => {
       logging: process.env.NODE_ENV === 'development' ?
         (msg) => logger.debug(msg) : false,
       pool: {
-        max: 10,
-        min: 0,
-        acquire: 30000,
-        idle: 10000
+        max: 20,        // Increased from 10 to 20 for better concurrency
+        min: 2,         // Keep minimum connections alive
+        acquire: 60000, // Increased from 30s to 60s
+        idle: 30000     // Increased from 10s to 30s
       },
       dialectOptions: {
         ssl: process.env.NODE_ENV === 'production' ? {

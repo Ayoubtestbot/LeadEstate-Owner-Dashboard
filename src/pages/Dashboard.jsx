@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Building2, Users, BarChart3, TrendingUp, DollarSign, Activity, RefreshCw } from 'lucide-react'
 import { ownerAPI, handleApiError } from '../services/api'
 import AddAgencyModal from '../components/AddAgencyModal'
+import PerformanceMonitor from '../components/PerformanceMonitor'
 import toast from 'react-hot-toast'
 
 const Dashboard = () => {
@@ -366,6 +367,15 @@ const Dashboard = () => {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onAgencyCreated={handleAgencyCreated}
+      />
+
+      {/* Performance Monitor */}
+      <PerformanceMonitor
+        loading={loading}
+        dataCount={{
+          agencies: recentAgencies.length,
+          stats: Object.keys(stats).length
+        }}
       />
     </div>
   )

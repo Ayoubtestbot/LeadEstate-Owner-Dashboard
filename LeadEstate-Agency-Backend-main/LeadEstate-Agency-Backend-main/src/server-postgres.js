@@ -450,6 +450,60 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
+// Database optimization endpoint - creates indexes for better performance
+app.get('/api/optimize-db', async (req, res) => {
+  try {
+    console.log('🚀 Optimizing database for better performance...');
+    const startTime = Date.now();
+
+    // Create indexes for better query performance
+    const indexQueries = [
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_leads_created_at ON leads(created_at DESC)',
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_leads_status ON leads(status)',
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_leads_assigned_to ON leads(assigned_to)',
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_leads_agency_id ON leads(agency_id)',
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_properties_created_at ON properties(created_at DESC)',
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_properties_status ON properties(status)',
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_properties_agency_id ON properties(agency_id)',
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_team_created_at ON team(created_at DESC)',
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_team_agency_id ON team(agency_id)',
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_users_email ON users(email)',
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_users_role ON users(role)',
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_agencies_created_at ON agencies(created_at DESC)',
+      'CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_agencies_status ON agencies(status)',
+    ];
+
+    const results = [];
+    for (const query of indexQueries) {
+      try {
+        await pool.query(query);
+        results.push({ query, status: 'success' });
+        console.log('✅ Index created:', query.split(' ')[5]);
+      } catch (error) {
+        results.push({ query, status: 'error', error: error.message });
+        console.log('⚠️ Index creation failed:', error.message);
+      }
+    }
+
+    const endTime = Date.now();
+    console.log(`✅ Database optimization completed in ${endTime - startTime}ms`);
+
+    res.json({
+      success: true,
+      message: 'Database optimization completed',
+      results,
+      optimizationTime: endTime - startTime
+    });
+  } catch (error) {
+    console.error('❌ Database optimization failed:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Database optimization failed',
+      error: error.message
+    });
+  }
+});
+
 // Test insert endpoint (GET version for easy testing)
 app.get('/api/test-insert', async (req, res) => {
   try {
