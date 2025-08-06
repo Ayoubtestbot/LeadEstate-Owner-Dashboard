@@ -1,10 +1,11 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { 
-  LayoutDashboard, 
-  Building2, 
-  BarChart3, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Building2,
+  Users,
+  BarChart3,
+  Settings,
   HelpCircle,
   X
 } from 'lucide-react'
@@ -12,6 +13,7 @@ import {
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
   { name: 'Agencies', href: '/agencies', icon: Building2 },
+  { name: 'Trial Users', href: '/trial-users', icon: Users },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Settings', href: '/settings', icon: Settings },
   { name: 'Support', href: '/support', icon: HelpCircle },

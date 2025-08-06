@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar'
 import Header from './components/Header'
 import Dashboard from './pages/Dashboard'
 import Agencies from './pages/Agencies'
+import TrialUsers from './pages/TrialUsers'
 import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
 import Support from './pages/Support'
@@ -25,6 +26,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/agencies" element={<Agencies />} />
+                <Route path="/trial-users" element={<TrialUsers />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/support" element={<Support />} />
